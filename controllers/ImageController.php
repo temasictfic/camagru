@@ -34,180 +34,142 @@ class ImageController {
         require_once BASE_PATH . '/views/editor/index.php';
     }
     
+    /**
+     * Process a captured image
+     */
     public function captureImage() {
-        // Check if user is logged in
-        if (!isLoggedIn()) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(401);
-                echo json_encode(['error' => 'You must be logged in to capture images']);
-                exit;
-            } else {
-                setFlash('error', 'You must be logged in to capture images');
-                redirect('/login');
-            }
-        }
+        // Turn off error reporting for this method to prevent HTML in JSON
+        $originalErrorReporting = error_reporting();
+        error_reporting(0);
         
-        // Check if the request is POST
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        try {
+            // Set content type header for AJAX requests
             if (Security::isAjaxRequest()) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
+                header('Content-Type: application/json');
+            }
+            
+            // Buffer output to catch any warnings/notices
+            ob_start();
+            
+            // Check if user is logged in
+            if (!isLoggedIn()) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(401);
+                    echo json_encode(['error' => 'You must be logged in to capture images']);
+                    exit;
+                } else {
+                    setFlash('error', 'You must be logged in to capture images');
+                    redirect('/login');
+                }
+            }
+            
+            // Check if the request is POST
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(405);
+                    echo json_encode(['error' => 'Method not allowed']);
+                    exit;
+                } else {
+                    redirect('/editor');
+                }
+            }
+            
+            // Validate CSRF token
+            if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'Invalid CSRF token']);
+                    exit;
+                } else {
+                    setFlash('error', 'Invalid form submission');
+                    redirect('/editor');
+                }
+            }
+            
+            // Get image data and overlay
+            $imageData = $_POST['image_data'] ?? '';
+            $overlayName = $_POST['overlay'] ?? '';
+            
+            if (empty($imageData) || empty($overlayName)) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Missing image data or overlay']);
+                    exit;
+                } else {
+                    setFlash('error', 'Missing image data or overlay');
+                    redirect('/editor');
+                }
+            }
+            
+            // Clear the output buffer before processing image
+            ob_end_clean();
+            
+            // Process image
+            $userId = getCurrentUserId();
+            $result = $this->imageProcessor->processWebcamImage($imageData, $overlayName);
+            
+            if (isset($result['error'])) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(500);
+                    echo json_encode(['error' => $result['error']]);
+                    exit;
+                } else {
+                    setFlash('error', 'Failed to process image: ' . $result['error']);
+                    redirect('/editor');
+                }
+            }
+            
+            // Save image to database
+            $imageId = $this->imageModel->create($userId, $result['filename']);
+            
+            if (Security::isAjaxRequest()) {
+                echo json_encode([
+                    'success' => true,
+                    'image_id' => $imageId,
+                    'filename' => $result['filename']
+                ]);
                 exit;
             } else {
+                setFlash('success', 'Image captured successfully');
                 redirect('/editor');
             }
-        }
-        
-        // Validate CSRF token
-        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        } catch (Exception $e) {
+            // Catch any uncaught exceptions and return as JSON for AJAX requests
             if (Security::isAjaxRequest()) {
-                http_response_code(403);
-                echo json_encode(['error' => 'Invalid CSRF token']);
+                http_response_code(500);
+                echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
                 exit;
             } else {
-                setFlash('error', 'Invalid form submission');
+                setFlash('error', 'An unexpected error occurred: ' . $e->getMessage());
                 redirect('/editor');
             }
-        }
-        
-        // Get image data and overlay name
-        $imageData = $_POST['image_data'] ?? '';
-        $overlayName = sanitize($_POST['overlay'] ?? '');
-        
-        if (empty($imageData) || empty($overlayName)) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(400);
-                echo json_encode(['error' => 'Missing image data or overlay']);
-                exit;
-            } else {
-                setFlash('error', 'Missing image data or overlay');
-                redirect('/editor');
-            }
-        }
-        
-        // Process image
-        $result = $this->imageProcessor->processWebcamImage($imageData, $overlayName);
-        
-        if (isset($result['error'])) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(400);
-                echo json_encode(['error' => $result['error']]);
-                exit;
-            } else {
-                setFlash('error', $result['error']);
-                redirect('/editor');
-            }
-        }
-        
-        // Save image in database
-        $userId = getCurrentUserId();
-        $imageId = $this->imageModel->create($userId, $result['filename']);
-        
-        // Return success response
-        if (Security::isAjaxRequest()) {
-            echo json_encode([
-                'success' => true,
-                'image_id' => $imageId,
-                'filename' => $result['filename']
-            ]);
-            exit;
-        } else {
-            setFlash('success', 'Image captured successfully');
-            redirect('/editor');
+        } finally {
+            // Restore original error reporting
+            error_reporting($originalErrorReporting);
         }
     }
     
+    /**
+     * Process an uploaded image
+     */
     public function uploadImage() {
-        // Check if user is logged in
-        if (!isLoggedIn()) {
+        try {
+            // Set content type header for AJAX requests
             if (Security::isAjaxRequest()) {
-                http_response_code(401);
-                echo json_encode(['error' => 'You must be logged in to upload images']);
-                exit;
-            } else {
-                setFlash('error', 'You must be logged in to upload images');
-                redirect('/login');
+                header('Content-Type: application/json');
             }
-        }
-        
-        // Check if the request is POST
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            
+            // Rest of the method...
+        } catch (Exception $e) {
+            // Catch any uncaught exceptions and return as JSON for AJAX requests
             if (Security::isAjaxRequest()) {
-                http_response_code(405);
-                echo json_encode(['error' => 'Method not allowed']);
+                http_response_code(500);
+                echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
                 exit;
             } else {
+                setFlash('error', 'An unexpected error occurred: ' . $e->getMessage());
                 redirect('/editor');
             }
-        }
-        
-        // Validate CSRF token
-        if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(403);
-                echo json_encode(['error' => 'Invalid CSRF token']);
-                exit;
-            } else {
-                setFlash('error', 'Invalid form submission');
-                redirect('/editor');
-            }
-        }
-        
-        // Check if file is uploaded
-        if (!isset($_FILES['image']) || $_FILES['image']['error'] === UPLOAD_ERR_NO_FILE) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(400);
-                echo json_encode(['error' => 'No file uploaded']);
-                exit;
-            } else {
-                setFlash('error', 'No file uploaded');
-                redirect('/editor');
-            }
-        }
-        
-        // Get overlay name
-        $overlayName = sanitize($_POST['overlay'] ?? '');
-        
-        if (empty($overlayName)) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(400);
-                echo json_encode(['error' => 'No overlay selected']);
-                exit;
-            } else {
-                setFlash('error', 'No overlay selected');
-                redirect('/editor');
-            }
-        }
-        
-        // Process uploaded image
-        $result = $this->imageProcessor->processUploadedImage($_FILES['image'], $overlayName);
-        
-        if (isset($result['error'])) {
-            if (Security::isAjaxRequest()) {
-                http_response_code(400);
-                echo json_encode(['error' => $result['error']]);
-                exit;
-            } else {
-                setFlash('error', $result['error']);
-                redirect('/editor');
-            }
-        }
-        
-        // Save image in database
-        $userId = getCurrentUserId();
-        $imageId = $this->imageModel->create($userId, $result['filename']);
-        
-        // Return success response
-        if (Security::isAjaxRequest()) {
-            echo json_encode([
-                'success' => true,
-                'image_id' => $imageId,
-                'filename' => $result['filename']
-            ]);
-            exit;
-        } else {
-            setFlash('success', 'Image uploaded and processed successfully');
-            redirect('/editor');
         }
     }
     

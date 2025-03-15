@@ -133,6 +133,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Submit form with AJAX
         const formData = new FormData(captureForm);
         
+        // Show loading state
+        captureButton.disabled = true;
+        captureButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
         fetch('/editor/capture', {
             method: 'POST',
             body: formData,
@@ -140,18 +144,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            return response.text().then(text => {
+                try {
+                    // Try to parse as JSON
+                    return JSON.parse(text);
+                } catch (e) {
+                    // If parsing fails, log the raw response and throw error
+                    console.error('Server response is not valid JSON:', text);
+                    throw new Error('Server returned invalid JSON. Check server logs for PHP errors.');
+                }
+            });
+        })
         .then(data => {
             if (data.success) {
                 // Refresh the page to show the new image
                 window.location.reload();
             } else if (data.error) {
                 alert('Error: ' + data.error);
+                // Reset button
+                captureButton.disabled = false;
+                captureButton.innerHTML = '<i class="fas fa-camera"></i> Capture Photo';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while uploading the image. Please try again.');
+            alert('An error occurred: ' + error.message);
+            
+            // Reset button
+            captureButton.disabled = false;
+            captureButton.innerHTML = '<i class="fas fa-camera"></i> Capture Photo';
         });
     }
     
@@ -198,20 +220,43 @@ document.addEventListener('DOMContentLoaded', function() {
                 'X-Requested-With': 'XMLHttpRequest'
             }
         })
-        .then(response => response.json())
+        .then(response => {
+            // First check if the response is ok
+            if (!response.ok) {
+                return response.text().then(text => {
+                    try {
+                        // Try to parse as JSON first
+                        return Promise.reject(JSON.parse(text));
+                    } catch (e) {
+                        // If not JSON, return the text
+                        return Promise.reject({ error: text || 'Server error' });
+                    }
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Refresh the page to show the new image
                 window.location.reload();
             } else if (data.error) {
                 alert('Error: ' + data.error);
+                // Reset button
                 uploadSubmit.disabled = false;
                 uploadSubmit.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
             }
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('An error occurred while uploading the image. Please try again.');
+            let errorMsg = 'An error occurred while uploading the image. Please try again.';
+            
+            if (error && error.error) {
+                errorMsg = 'Error: ' + error.error;
+            }
+            
+            alert(errorMsg);
+            
+            // Reset button
             uploadSubmit.disabled = false;
             uploadSubmit.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
         });

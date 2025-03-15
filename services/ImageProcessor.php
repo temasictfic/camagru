@@ -11,138 +11,209 @@ class ImageProcessor {
         $this->overlaysDir = BASE_PATH . '/public/img/overlays/';
         $this->allowedExtensions = ['jpg', 'jpeg', 'png'];
         $this->maxFileSize = 5 * 1024 * 1024; // 5MB
+        
+        // Ensure paths end with slash
+        if (substr($this->uploadsDir, -1) !== '/') {
+            $this->uploadsDir .= '/';
+        }
+        
+        if (substr($this->overlaysDir, -1) !== '/') {
+            $this->overlaysDir .= '/';
+        }
     }
     
     /**
      * Process a webcam image with overlay
      */
     public function processWebcamImage($imageData, $overlayName) {
-        // Remove data URI prefix and decode base64
-        $imageData = str_replace('data:image/png;base64,', '', $imageData);
-        $imageData = str_replace(' ', '+', $imageData);
-        $imageData = base64_decode($imageData);
-        
-        if ($imageData === false) {
-            return ['error' => 'Invalid image data'];
+        try {
+            // Remove data URI prefix and decode base64
+            $imageData = str_replace('data:image/png;base64,', '', $imageData);
+            $imageData = str_replace(' ', '+', $imageData);
+            $decodedData = base64_decode($imageData);
+            
+            if ($decodedData === false) {
+                return ['error' => 'Invalid image data'];
+            }
+            
+            // Create image from string
+            $image = @imagecreatefromstring($decodedData);
+            if (!$image) {
+                return ['error' => 'Failed to create image from data'];
+            }
+            
+            // Apply overlay
+            $result = $this->applyOverlay($image, $overlayName);
+            if (isset($result['error'])) {
+                imagedestroy($image);
+                return $result;
+            }
+            
+            // Generate unique filename
+            $filename = uniqid() . '.png';
+            $filepath = $this->uploadsDir . $filename;
+            
+            // Ensure uploads directory exists
+            if (!is_dir($this->uploadsDir)) {
+                if (!@mkdir($this->uploadsDir, 0777, true)) {
+                    return ['error' => 'Failed to create uploads directory: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Check if directory is writable
+            if (!is_writable($this->uploadsDir)) {
+                @chmod($this->uploadsDir, 0777);
+                if (!is_writable($this->uploadsDir)) {
+                    return ['error' => 'Uploads directory is not writable: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Save image
+            if (!@imagepng($image, $filepath)) {
+                imagedestroy($image);
+                return ['error' => 'Failed to save image to: ' . $filepath];
+            }
+            
+            imagedestroy($image);
+            
+            // Check if the file was actually created
+            if (!file_exists($filepath)) {
+                return ['error' => 'File was not created at: ' . $filepath];
+            }
+            
+            return ['filename' => $filename];
+        } catch (Exception $e) {
+            return ['error' => 'Exception processing image: ' . $e->getMessage()];
         }
-        
-        // Create image from string
-        $image = imagecreatefromstring($imageData);
-        if (!$image) {
-            return ['error' => 'Failed to create image from data'];
-        }
-        
-        // Apply overlay
-        $result = $this->applyOverlay($image, $overlayName);
-        if (isset($result['error'])) {
-            return $result;
-        }
-        
-        // Generate unique filename
-        $filename = uniqid() . '.png';
-        $filepath = $this->uploadsDir . $filename;
-        
-        // Save image
-        imagepng($image, $filepath);
-        imagedestroy($image);
-        
-        return ['filename' => $filename];
     }
     
     /**
      * Process an uploaded image with overlay
      */
     public function processUploadedImage($file, $overlayName) {
-        // Validate file
-        $validationResult = $this->validateUploadedFile($file);
-        if (isset($validationResult['error'])) {
-            return $validationResult;
+        try {
+            // Validate file
+            $validationResult = $this->validateUploadedFile($file);
+            if (isset($validationResult['error'])) {
+                return $validationResult;
+            }
+            
+            // Get file extension
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            
+            // Create image from file
+            $image = null;
+            if ($extension === 'jpg' || $extension === 'jpeg') {
+                $image = @imagecreatefromjpeg($file['tmp_name']);
+            } else if ($extension === 'png') {
+                $image = @imagecreatefrompng($file['tmp_name']);
+            }
+            
+            if (!$image) {
+                return ['error' => 'Failed to create image from uploaded file'];
+            }
+            
+            // Apply overlay
+            $result = $this->applyOverlay($image, $overlayName);
+            if (isset($result['error'])) {
+                imagedestroy($image);
+                return $result;
+            }
+            
+            // Generate unique filename
+            $filename = uniqid() . '.png';
+            $filepath = $this->uploadsDir . $filename;
+            
+            // Ensure uploads directory exists
+            if (!is_dir($this->uploadsDir)) {
+                if (!@mkdir($this->uploadsDir, 0777, true)) {
+                    return ['error' => 'Failed to create uploads directory: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Check if directory is writable
+            if (!is_writable($this->uploadsDir)) {
+                @chmod($this->uploadsDir, 0777);
+                if (!is_writable($this->uploadsDir)) {
+                    return ['error' => 'Uploads directory is not writable: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Save image
+            if (!@imagepng($image, $filepath)) {
+                imagedestroy($image);
+                return ['error' => 'Failed to save image to: ' . $filepath];
+            }
+            
+            imagedestroy($image);
+            
+            // Check if the file was actually created
+            if (!file_exists($filepath)) {
+                return ['error' => 'File was not created at: ' . $filepath];
+            }
+            
+            return ['filename' => $filename];
+        } catch (Exception $e) {
+            return ['error' => 'Exception processing image: ' . $e->getMessage()];
         }
-        
-        // Get file extension
-        $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-        
-        // Create image from file
-        $image = null;
-        if ($extension === 'jpg' || $extension === 'jpeg') {
-            $image = imagecreatefromjpeg($file['tmp_name']);
-        } else if ($extension === 'png') {
-            $image = imagecreatefrompng($file['tmp_name']);
-        }
-        
-        if (!$image) {
-            return ['error' => 'Failed to create image from uploaded file'];
-        }
-        
-        // Apply overlay
-        $result = $this->applyOverlay($image, $overlayName);
-        if (isset($result['error'])) {
-            return $result;
-        }
-        
-        // Generate unique filename
-        $filename = uniqid() . '.png';
-        $filepath = $this->uploadsDir . $filename;
-        
-        // Save image
-        imagepng($image, $filepath);
-        imagedestroy($image);
-        
-        return ['filename' => $filename];
     }
     
     /**
      * Apply overlay to an image
      */
     private function applyOverlay($image, $overlayName) {
-        $overlayPath = $this->overlaysDir . $overlayName;
-        
-        if (!file_exists($overlayPath)) {
-            return ['error' => 'Overlay not found'];
-        }
-        
-        // Load overlay
-        $overlay = imagecreatefrompng($overlayPath);
-        if (!$overlay) {
-            return ['error' => 'Failed to load overlay'];
-        }
-        
-        // Get dimensions
-        $imageWidth = imagesx($image);
-        $imageHeight = imagesy($image);
-        $overlayWidth = imagesx($overlay);
-        $overlayHeight = imagesy($overlay);
-        
-        // Resize overlay to fit the image while maintaining aspect ratio
-        if ($imageWidth < $overlayWidth || $imageHeight < $overlayHeight) {
-            $ratio = min($imageWidth / $overlayWidth, $imageHeight / $overlayHeight);
-            $newWidth = $overlayWidth * $ratio;
-            $newHeight = $overlayHeight * $ratio;
+        try {
+            $overlayPath = $this->overlaysDir . $overlayName;
             
-            $resizedOverlay = imagecreatetruecolor($newWidth, $newHeight);
+            if (!file_exists($overlayPath)) {
+                return ['error' => 'Overlay not found: ' . $overlayName];
+            }
             
-            // Preserve transparency
-            imagealphablending($resizedOverlay, false);
-            imagesavealpha($resizedOverlay, true);
-            $transparent = imagecolorallocatealpha($resizedOverlay, 255, 255, 255, 127);
-            imagefilledrectangle($resizedOverlay, 0, 0, $newWidth, $newHeight, $transparent);
+            // Load overlay
+            $overlay = @imagecreatefrompng($overlayPath);
+            if (!$overlay) {
+                return ['error' => 'Failed to load overlay: ' . $overlayName];
+            }
             
-            imagecopyresampled($resizedOverlay, $overlay, 0, 0, 0, 0, $newWidth, $newHeight, $overlayWidth, $overlayHeight);
+            // Get dimensions
+            $imageWidth = imagesx($image);
+            $imageHeight = imagesy($image);
+            $overlayWidth = imagesx($overlay);
+            $overlayHeight = imagesy($overlay);
+            
+            // Resize overlay to fit the image while maintaining aspect ratio
+            if ($imageWidth < $overlayWidth || $imageHeight < $overlayHeight) {
+                $ratio = min($imageWidth / $overlayWidth, $imageHeight / $overlayHeight);
+                $newWidth = $overlayWidth * $ratio;
+                $newHeight = $overlayHeight * $ratio;
+                
+                $resizedOverlay = imagecreatetruecolor($newWidth, $newHeight);
+                
+                // Preserve transparency
+                imagealphablending($resizedOverlay, false);
+                imagesavealpha($resizedOverlay, true);
+                $transparent = imagecolorallocatealpha($resizedOverlay, 255, 255, 255, 127);
+                imagefilledrectangle($resizedOverlay, 0, 0, $newWidth, $newHeight, $transparent);
+                
+                imagecopyresampled($resizedOverlay, $overlay, 0, 0, 0, 0, $newWidth, $newHeight, $overlayWidth, $overlayHeight);
+                imagedestroy($overlay);
+                $overlay = $resizedOverlay;
+                $overlayWidth = $newWidth;
+                $overlayHeight = $newHeight;
+            }
+            
+            // Calculate position to center overlay
+            $posX = ($imageWidth - $overlayWidth) / 2;
+            $posY = ($imageHeight - $overlayHeight) / 2;
+            
+            // Copy overlay onto image while preserving transparency
+            imagecopy($image, $overlay, $posX, $posY, 0, 0, $overlayWidth, $overlayHeight);
             imagedestroy($overlay);
-            $overlay = $resizedOverlay;
-            $overlayWidth = $newWidth;
-            $overlayHeight = $newHeight;
+            
+            return ['success' => true];
+        } catch (Exception $e) {
+            return ['error' => 'Exception applying overlay: ' . $e->getMessage()];
         }
-        
-        // Calculate position to center overlay
-        $posX = ($imageWidth - $overlayWidth) / 2;
-        $posY = ($imageHeight - $overlayHeight) / 2;
-        
-        // Copy overlay onto image while preserving transparency
-        imagecopy($image, $overlay, $posX, $posY, 0, 0, $overlayWidth, $overlayHeight);
-        imagedestroy($overlay);
-        
-        return ['success' => true];
     }
     
     /**
@@ -192,12 +263,18 @@ class ImageProcessor {
      */
     public function getOverlays() {
         $overlays = [];
+        
+        // Check if directory exists
+        if (!is_dir($this->overlaysDir)) {
+            return $overlays;
+        }
+        
         $files = scandir($this->overlaysDir);
         
         foreach ($files as $file) {
             if ($file !== '.' && $file !== '..' && !is_dir($this->overlaysDir . $file)) {
                 $info = pathinfo($file);
-                if (strtolower($info['extension']) === 'png') {
+                if (isset($info['extension']) && strtolower($info['extension']) === 'png') {
                     $overlays[] = $file;
                 }
             }

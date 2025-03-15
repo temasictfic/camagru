@@ -76,8 +76,41 @@ if (!$matchedRoute) {
 $controllerName = $matchedRoute['controller'];
 $methodName = $matchedRoute['method'];
 
+// For AJAX endpoints, set the proper content type
+if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
+    if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment'])) {
+        header('Content-Type: application/json');
+    }
+}
+
 // Create controller instance
 $controller = new $controllerName();
 
-// Call method
-$controller->$methodName();
+// For AJAX methods, suppress PHP warnings and notices
+if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment'])) {
+    // Save current error reporting level
+    $originalErrorReporting = error_reporting();
+    // Turn off warnings and notices
+    error_reporting(E_ERROR | E_PARSE);
+    
+    // Start output buffering to catch any warnings/notices
+    ob_start();
+    
+    try {
+        // Call method
+        $controller->$methodName();
+    } catch (Exception $e) {
+        // Clean the output buffer
+        ob_end_clean();
+        
+        // Return JSON error response
+        http_response_code(500);
+        echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+    }
+    
+    // Restore original error reporting
+    error_reporting($originalErrorReporting);
+} else {
+    // Call method normally for non-AJAX routes
+    $controller->$methodName();
+}
