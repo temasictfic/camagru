@@ -142,10 +142,24 @@ class Email {
             $mail->isSMTP();                                      // Send using SMTP
             $mail->Host       = $this->host;                      // Set the SMTP server
             $mail->SMTPAuth   = true;                             // Enable SMTP authentication
-            $mail->Username   = $this->username;                  // SMTP username
-            $mail->Password   = $this->password;                  // SMTP password
+
+            // MailHog typically doesn't need authentication
+            if (!empty($this->username) && !empty($this->password)) {
+                $mail->SMTPAuth   = true;
+                $mail->Username   = $this->username;
+                $mail->Password   = $this->password;
+            } else {
+                $mail->SMTPAuth = false;
+            }
+            
+            // For development with MailHog, we don't need encryption
+            $mail->SMTPSecure = '';
+            $mail->SMTPAutoTLS = false;
             
             // For Gmail, enable these settings
+/*             $mail->Username   = $this->username;                  // SMTP username
+            $mail->Password   = $this->password;                  // SMTP password
+            
             if (strpos($this->host, 'gmail') !== false) {
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Enable TLS encryption
                 $mail->Port       = 587;                            // TCP port to connect to (use 587 for TLS)
@@ -153,7 +167,7 @@ class Email {
                 // Default secure connection setting
                 $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;     // Use SMTPS (implicit TLS)
                 $mail->Port       = $this->port;                     // TCP port as specified in config
-            }
+            } */
 
             // Recipients
             $mail->setFrom($this->from, $this->fromName);

@@ -42,6 +42,16 @@ services:
     networks:
       - camagru
 
+  # MailHog service
+  mailhog:
+    image: mailhog/mailhog
+    container_name: camagru_mailhog
+    ports:
+      - "1025:1025" # SMTP server
+      - "8025:8025" # Web interface
+    networks:
+      - camagru
+
 # Networks
 networks:
   camagru:
