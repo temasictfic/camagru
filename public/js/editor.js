@@ -10,22 +10,24 @@ document.addEventListener('DOMContentLoaded', function() {
     const captureButton = document.getElementById('captureButton');
     const overlayItems = document.querySelectorAll('.overlay-item');
     const overlayInput = document.getElementById('overlayInput');
-    const uploadOverlayInput = document.getElementById('uploadOverlayInput');
     const imageData = document.getElementById('imageData');
     const captureForm = document.getElementById('captureForm');
-    const uploadForm = document.getElementById('uploadForm');
-    const imageUpload = document.getElementById('imageUpload');
-    const uploadPreview = document.getElementById('uploadPreview');
-    const uploadPlaceholder = document.getElementById('uploadPlaceholder');
-    const uploadSubmit = document.getElementById('uploadSubmit');
     
     // Variables
     let stream = null;
     let selectedOverlay = null;
     
     // Event listeners
-    startCameraBtn.addEventListener('click', startCamera);
-    switchToUploadBtn.addEventListener('click', switchToUpload);
+    if (startCameraBtn) {
+        startCameraBtn.addEventListener('click', startCamera);
+    }
+    
+    if (switchToUploadBtn) {
+        switchToUploadBtn.addEventListener('click', switchToUpload);
+    }
+    
+    // Add Clear Overlay button
+    addClearOverlayButton();
     
     overlayItems.forEach(item => {
         item.addEventListener('click', function() {
@@ -33,20 +35,43 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    captureForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        captureImage();
-    });
-    
-    imageUpload.addEventListener('change', function() {
-        previewImage();
-    });
+    if (captureForm) {
+        captureForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            captureImage();
+        });
+    }
     
     // Functions
+    function addClearOverlayButton() {
+        const overlaysContainer = document.querySelector('.overlays-container');
+        if (!overlaysContainer) return;
+        
+        // Check if button already exists
+        let clearBtn = document.getElementById('clearOverlayBtn');
+        if (clearBtn) return;
+        
+        // Create new button
+        clearBtn = document.createElement('button');
+        clearBtn.id = 'clearOverlayBtn';
+        clearBtn.className = 'btn btn-secondary';
+        clearBtn.style.marginBottom = '10px';
+        clearBtn.innerHTML = '<i class="fas fa-times"></i> Clear Overlay Selection';
+        clearBtn.addEventListener('click', clearOverlaySelection);
+        
+        // Find where to insert it
+        const overlaysTitle = overlaysContainer.querySelector('h3');
+        if (overlaysTitle) {
+            overlaysContainer.insertBefore(clearBtn, overlaysTitle);
+        } else {
+            overlaysContainer.prepend(clearBtn);
+        }
+    }
+    
     function startCamera() {
         // Switch UI
         cameraContainer.style.display = 'block';
-        uploadContainer.style.display = 'none';
+        if (uploadContainer) uploadContainer.style.display = 'none';
         startCameraBtn.classList.add('btn-primary');
         startCameraBtn.classList.remove('btn-secondary');
         switchToUploadBtn.classList.add('btn-secondary');
@@ -63,6 +88,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     camera.srcObject = stream;
                     camera.style.display = 'block';
                     cameraPlaceholder.style.display = 'none';
+                    
+                    // Enable capture button when camera is active
+                    captureButton.disabled = false;
                 })
                 .catch(function(error) {
                     console.error('Error accessing camera:', error);
@@ -87,9 +115,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Stop camera if running
         stopCamera();
         
+        // Prompt user for manual actions
+        //alert("Please click the 'Choose Image' button and then 'Create Photo' after selecting an image.");
+        
         // Switch UI
         cameraContainer.style.display = 'none';
-        uploadContainer.style.display = 'block';
+        if (uploadContainer) uploadContainer.style.display = 'block';
         startCameraBtn.classList.remove('btn-primary');
         startCameraBtn.classList.add('btn-secondary');
         switchToUploadBtn.classList.remove('btn-secondary');
@@ -108,15 +139,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set selected overlay
         selectedOverlay = item.dataset.overlay;
         overlayInput.value = selectedOverlay;
-        uploadOverlayInput.value = selectedOverlay;
+    }
+    
+    function clearOverlaySelection() {
+        // Remove selected class from all overlays
+        overlayItems.forEach(overlay => {
+            overlay.classList.remove('selected');
+        });
         
-        // Enable capture button
-        captureButton.disabled = !selectedOverlay;
-        uploadSubmit.disabled = !(selectedOverlay && imageUpload.files.length > 0);
+        // Clear selected overlay
+        selectedOverlay = null;
+        overlayInput.value = '';
     }
     
     function captureImage() {
-        if (!stream || !selectedOverlay) return;
+        if (!stream) return;
         
         // Set canvas dimensions
         canvas.width = camera.videoWidth;
@@ -129,6 +166,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get image data
         const data = canvas.toDataURL('image/png');
         imageData.value = data;
+        
+        // Make sure we always have a value for overlay (even if empty)
+        if (!overlayInput.value) {
+            overlayInput.value = '';
+        }
         
         // Submit form with AJAX
         const formData = new FormData(captureForm);
@@ -176,89 +218,4 @@ document.addEventListener('DOMContentLoaded', function() {
             captureButton.innerHTML = '<i class="fas fa-camera"></i> Capture Photo';
         });
     }
-    
-    function previewImage() {
-        if (imageUpload.files && imageUpload.files[0]) {
-            const reader = new FileReader();
-            
-            reader.onload = function(e) {
-                uploadPreview.src = e.target.result;
-                uploadPreview.style.display = 'block';
-                uploadPlaceholder.style.display = 'none';
-                
-                // Enable submit button if overlay is selected
-                uploadSubmit.disabled = !selectedOverlay;
-            }
-            
-            reader.readAsDataURL(imageUpload.files[0]);
-        } else {
-            uploadPreview.style.display = 'none';
-            uploadPlaceholder.style.display = 'flex';
-            uploadSubmit.disabled = true;
-        }
-    }
-    
-    // AJAX form submission for image upload
-    uploadForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        if (!selectedOverlay || !imageUpload.files.length) {
-            alert('Please select an overlay and upload an image.');
-            return;
-        }
-        
-        const formData = new FormData(uploadForm);
-        
-        // Show loading state
-        uploadSubmit.disabled = true;
-        uploadSubmit.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-        
-        fetch('/editor/upload', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        })
-        .then(response => {
-            // First check if the response is ok
-            if (!response.ok) {
-                return response.text().then(text => {
-                    try {
-                        // Try to parse as JSON first
-                        return Promise.reject(JSON.parse(text));
-                    } catch (e) {
-                        // If not JSON, return the text
-                        return Promise.reject({ error: text || 'Server error' });
-                    }
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                // Refresh the page to show the new image
-                window.location.reload();
-            } else if (data.error) {
-                alert('Error: ' + data.error);
-                // Reset button
-                uploadSubmit.disabled = false;
-                uploadSubmit.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            let errorMsg = 'An error occurred while uploading the image. Please try again.';
-            
-            if (error && error.error) {
-                errorMsg = 'Error: ' + error.error;
-            }
-            
-            alert(errorMsg);
-            
-            // Reset button
-            uploadSubmit.disabled = false;
-            uploadSubmit.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
-        });
-    });
 });

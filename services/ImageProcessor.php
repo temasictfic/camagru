@@ -86,12 +86,76 @@ class ImageProcessor {
             return ['error' => 'Exception processing image: ' . $e->getMessage()];
         }
     }
+
+    /**
+     * Process a webcam image without applying an overlay
+     * 
+     * @param string $imageData Base64 encoded image data
+     * @return array Result with filename or error
+     */
+    public function processWebcamImageWithoutOverlay($imageData) {
+        try {
+            // Remove data URI prefix and decode base64
+            $imageData = str_replace('data:image/png;base64,', '', $imageData);
+            $imageData = str_replace(' ', '+', $imageData);
+            $decodedData = base64_decode($imageData);
+            
+            if ($decodedData === false) {
+                return ['error' => 'Invalid image data'];
+            }
+            
+            // Create image from string
+            $image = @imagecreatefromstring($decodedData);
+            if (!$image) {
+                return ['error' => 'Failed to create image from data'];
+            }
+            
+            // Generate unique filename
+            $filename = uniqid() . '.png';
+            $filepath = $this->uploadsDir . $filename;
+            
+            // Ensure uploads directory exists
+            if (!is_dir($this->uploadsDir)) {
+                if (!@mkdir($this->uploadsDir, 0777, true)) {
+                    return ['error' => 'Failed to create uploads directory: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Check if directory is writable
+            if (!is_writable($this->uploadsDir)) {
+                @chmod($this->uploadsDir, 0777);
+                if (!is_writable($this->uploadsDir)) {
+                    return ['error' => 'Uploads directory is not writable: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Save image
+            if (!@imagepng($image, $filepath)) {
+                imagedestroy($image);
+                return ['error' => 'Failed to save image to: ' . $filepath];
+            }
+            
+            imagedestroy($image);
+            
+            // Check if the file was actually created
+            if (!file_exists($filepath)) {
+                return ['error' => 'File was not created at: ' . $filepath];
+            }
+            
+            return ['filename' => $filename];
+        } catch (Exception $e) {
+            return ['error' => 'Exception processing image: ' . $e->getMessage()];
+        }
+    }
     
     /**
      * Process an uploaded image with overlay
      */
     public function processUploadedImage($file, $overlayName) {
         try {
+            // For debugging
+            error_log("Processing uploaded image with overlay: " . $overlayName);
+            
             // Validate file
             $validationResult = $this->validateUploadedFile($file);
             if (isset($validationResult['error'])) {
@@ -113,11 +177,85 @@ class ImageProcessor {
                 return ['error' => 'Failed to create image from uploaded file'];
             }
             
-            // Apply overlay
-            $result = $this->applyOverlay($image, $overlayName);
-            if (isset($result['error'])) {
+            // Preserve transparency in the main image
+            imagealphablending($image, true);
+            imagesavealpha($image, true);
+            
+            // Apply overlay if provided
+            if (!empty($overlayName)) {
+                $result = $this->applyOverlay($image, $overlayName);
+                if (isset($result['error'])) {
+                    imagedestroy($image);
+                    return $result;
+                }
+            }
+            
+            // Generate unique filename
+            $filename = uniqid() . '.png';
+            $filepath = $this->uploadsDir . $filename;
+            
+            // Ensure uploads directory exists
+            if (!is_dir($this->uploadsDir)) {
+                if (!@mkdir($this->uploadsDir, 0777, true)) {
+                    return ['error' => 'Failed to create uploads directory: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Check if directory is writable
+            if (!is_writable($this->uploadsDir)) {
+                @chmod($this->uploadsDir, 0777);
+                if (!is_writable($this->uploadsDir)) {
+                    return ['error' => 'Uploads directory is not writable: ' . $this->uploadsDir];
+                }
+            }
+            
+            // Save image - ensure PNG quality is high
+            if (!@imagepng($image, $filepath, 0)) { // 0 = no compression for highest quality
                 imagedestroy($image);
-                return $result;
+                return ['error' => 'Failed to save image to: ' . $filepath];
+            }
+            
+            imagedestroy($image);
+            
+            // Check if the file was actually created
+            if (!file_exists($filepath)) {
+                return ['error' => 'File was not created at: ' . $filepath];
+            }
+            
+            return ['filename' => $filename];
+        } catch (Exception $e) {
+            error_log("Exception in processUploadedImage: " . $e->getMessage());
+            return ['error' => 'Exception processing image: ' . $e->getMessage()];
+        }
+    }
+
+    /**
+     * Process an uploaded image without applying an overlay
+     * 
+     * @param array $file Uploaded file data from $_FILES
+     * @return array Result with filename or error
+     */
+    public function processUploadedImageWithoutOverlay($file) {
+        try {
+            // Validate file
+            $validationResult = $this->validateUploadedFile($file);
+            if (isset($validationResult['error'])) {
+                return $validationResult;
+            }
+            
+            // Get file extension
+            $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            
+            // Create image from file
+            $image = null;
+            if ($extension === 'jpg' || $extension === 'jpeg') {
+                $image = @imagecreatefromjpeg($file['tmp_name']);
+            } else if ($extension === 'png') {
+                $image = @imagecreatefrompng($file['tmp_name']);
+            }
+            
+            if (!$image) {
+                return ['error' => 'Failed to create image from uploaded file'];
             }
             
             // Generate unique filename
@@ -163,17 +301,26 @@ class ImageProcessor {
      */
     private function applyOverlay($image, $overlayName) {
         try {
+            // For debugging
+            error_log("Applying overlay: " . $overlayName);
+            
             $overlayPath = $this->overlaysDir . $overlayName;
             
             if (!file_exists($overlayPath)) {
+                error_log("Overlay not found: " . $overlayPath);
                 return ['error' => 'Overlay not found: ' . $overlayName];
             }
             
             // Load overlay
             $overlay = @imagecreatefrompng($overlayPath);
             if (!$overlay) {
+                error_log("Failed to load overlay: " . $overlayPath);
                 return ['error' => 'Failed to load overlay: ' . $overlayName];
             }
+            
+            // Enable alpha blending and save alpha for the overlay
+            imagealphablending($overlay, true);
+            imagesavealpha($overlay, true);
             
             // Get dimensions
             $imageWidth = imagesx($image);
@@ -181,11 +328,16 @@ class ImageProcessor {
             $overlayWidth = imagesx($overlay);
             $overlayHeight = imagesy($overlay);
             
+            error_log("Image dimensions: " . $imageWidth . "x" . $imageHeight);
+            error_log("Overlay dimensions: " . $overlayWidth . "x" . $overlayHeight);
+            
             // Resize overlay to fit the image while maintaining aspect ratio
             if ($imageWidth < $overlayWidth || $imageHeight < $overlayHeight) {
                 $ratio = min($imageWidth / $overlayWidth, $imageHeight / $overlayHeight);
                 $newWidth = $overlayWidth * $ratio;
                 $newHeight = $overlayHeight * $ratio;
+                
+                error_log("Resizing overlay to: " . $newWidth . "x" . $newHeight);
                 
                 $resizedOverlay = imagecreatetruecolor($newWidth, $newHeight);
                 
@@ -206,12 +358,21 @@ class ImageProcessor {
             $posX = ($imageWidth - $overlayWidth) / 2;
             $posY = ($imageHeight - $overlayHeight) / 2;
             
+            error_log("Overlay position: " . $posX . "," . $posY);
+            
+            // Enable alpha blending on the destination image before copying
+            imagealphablending($image, true);
+            
             // Copy overlay onto image while preserving transparency
             imagecopy($image, $overlay, $posX, $posY, 0, 0, $overlayWidth, $overlayHeight);
             imagedestroy($overlay);
             
+            // Make sure we're saving the alpha channel
+            imagesavealpha($image, true);
+            
             return ['success' => true];
         } catch (Exception $e) {
+            error_log("Exception applying overlay: " . $e->getMessage());
             return ['error' => 'Exception applying overlay: ' . $e->getMessage()];
         }
     }
