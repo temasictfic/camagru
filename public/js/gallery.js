@@ -33,11 +33,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const likeBtn = likeForm.querySelector('.btn-like');
         const likesCountDisplay = document.querySelector('.likes-count');
         
+        // Add a data attribute to track if the form is already being processed
+        likeForm.setAttribute('data-processing', 'false');
+        
         likeForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Don't do anything if button is disabled
-            if (likeBtn.classList.contains('disabled')) return;
+            // Don't do anything if button is disabled or already processing
+            if (likeBtn.classList.contains('disabled') || likeForm.getAttribute('data-processing') === 'true') return;
+            
+            // Set processing flag to true
+            likeForm.setAttribute('data-processing', 'true');
             
             const formData = new FormData(likeForm);
             
@@ -69,6 +75,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reset processing flag
+                likeForm.setAttribute('data-processing', 'false');
             });
         });
     }
@@ -79,11 +89,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const commentTextarea = commentForm.querySelector('textarea');
         const commentsList = document.querySelector('.comments-list');
         
+        // Add a data attribute to track if the form is already being processed
+        commentForm.setAttribute('data-processing', 'false');
+        
         commentForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            // Don't submit if empty
-            if (commentTextarea.value.trim() === '') return;
+            // Don't submit if empty or already processing
+            if (commentTextarea.value.trim() === '' || commentForm.getAttribute('data-processing') === 'true') return;
+            
+            // Set processing flag to true
+            commentForm.setAttribute('data-processing', 'true');
             
             const formData = new FormData(commentForm);
             
@@ -120,6 +136,10 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
+            })
+            .finally(() => {
+                // Reset processing flag
+                commentForm.setAttribute('data-processing', 'false');
             });
         });
         

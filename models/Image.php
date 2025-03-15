@@ -81,17 +81,39 @@ class Image {
     }
     
     public function like($imageId, $userId) {
-        // Check if already liked
-        if ($this->isLikedByUser($imageId, $userId)) {
-            // Unlike
-            $sql = "DELETE FROM likes WHERE image_id = ? AND user_id = ?";
-            $this->db->query($sql, [$imageId, $userId]);
-            return false;
-        } else {
-            // Like
-            $sql = "INSERT INTO likes (image_id, user_id) VALUES (?, ?)";
-            $this->db->query($sql, [$imageId, $userId]);
-            return true;
+        // Begin a transaction to ensure atomicity
+        $db = $this->db->getConnection();
+        $db->beginTransaction();
+        
+        try {
+            // Check if already liked - explicitly lock the row to prevent race conditions
+            $sql = "SELECT COUNT(*) FROM likes 
+                    WHERE image_id = ? AND user_id = ? 
+                    FOR UPDATE";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([$imageId, $userId]);
+            $exists = (bool)$stmt->fetchColumn();
+            
+            if ($exists) {
+                // Unlike - the user already liked this image
+                $sql = "DELETE FROM likes WHERE image_id = ? AND user_id = ?";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$imageId, $userId]);
+                $db->commit();
+                return false;
+            } else {
+                // Like - the user hasn't liked this image yet
+                $sql = "INSERT INTO likes (image_id, user_id) VALUES (?, ?)";
+                $stmt = $db->prepare($sql);
+                $stmt->execute([$imageId, $userId]);
+                $db->commit();
+                return true;
+            }
+        } catch (Exception $e) {
+            // Rollback the transaction if something goes wrong
+            $db->rollBack();
+            error_log("Like transaction failed: " . $e->getMessage());
+            throw $e;
         }
     }
 }
