@@ -18,6 +18,6 @@ This directory should contain PNG images with transparency that will be used as 
 You can create these overlays yourself or download free PNG images with transparency from sites like:
 - https://www.pngitem.com/
 - https://www.freepngimg.com/
-- https://www.cleanpng.com/
+- https://www.cleanpng.com/ ***Good***
 
 Make sure to use images that are free for commercial use.

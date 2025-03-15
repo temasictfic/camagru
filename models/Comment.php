@@ -1,5 +1,8 @@
 <?php
 
+// Add this at the top of the file to include the Database class
+require_once __DIR__ . '/../config/database.php';
+
 class Comment {
     private $db;
     
