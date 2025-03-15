@@ -14,11 +14,12 @@ class Email {
     private $debug;
 
     public function __construct() {
-        $this->host = getenv('MAIL_HOST');
-        $this->port = getenv('MAIL_PORT');
+        // Ensure we're getting the configuration values directly
+        $this->host = getenv('MAIL_HOST') ?: 'mailhog';
+        $this->port = getenv('MAIL_PORT') ?: '1025';
         $this->username = getenv('MAIL_USERNAME');
         $this->password = getenv('MAIL_PASSWORD');
-        $this->from = getenv('MAIL_FROM');
+        $this->from = getenv('MAIL_FROM') ?: 'no-reply@camagru.local';
         $this->fromName = getenv('APP_NAME') ?: 'Camagru';
         $this->debug = getenv('APP_ENV') === 'development';
         
@@ -131,43 +132,25 @@ class Email {
         try {
             // Server settings
             if ($this->debug) {
-                // Instead of outputting to browser, log to file or store in a variable
+                // Set debugging level
                 $mail->SMTPDebug = SMTP::DEBUG_SERVER;
-                // Redirect output to a variable
+                // Redirect output to error log
                 $mail->Debugoutput = function($str, $level) {
                     error_log("PHPMailer Debug: $str");
                 };
             }
             
-            $mail->isSMTP();                                      // Send using SMTP
-            $mail->Host       = $this->host;                      // Set the SMTP server
-            $mail->SMTPAuth   = true;                             // Enable SMTP authentication
-
-            // MailHog typically doesn't need authentication
-            if (!empty($this->username) && !empty($this->password)) {
-                $mail->SMTPAuth   = true;
-                $mail->Username   = $this->username;
-                $mail->Password   = $this->password;
-            } else {
-                $mail->SMTPAuth = false;
-            }
+            // Basic SMTP configuration
+            $mail->isSMTP();                   // Send using SMTP
+            $mail->Host = $this->host;         // SMTP server address
+            $mail->Port = $this->port;         // SMTP port
             
-            // For development with MailHog, we don't need encryption
+            // Disable authentication for MailHog
+            $mail->SMTPAuth = false;
+            
+            // Disable encryption for MailHog
             $mail->SMTPSecure = '';
             $mail->SMTPAutoTLS = false;
-            
-            // For Gmail, enable these settings
-/*             $mail->Username   = $this->username;                  // SMTP username
-            $mail->Password   = $this->password;                  // SMTP password
-            
-            if (strpos($this->host, 'gmail') !== false) {
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS; // Enable TLS encryption
-                $mail->Port       = 587;                            // TCP port to connect to (use 587 for TLS)
-            } else {
-                // Default secure connection setting
-                $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;     // Use SMTPS (implicit TLS)
-                $mail->Port       = $this->port;                     // TCP port as specified in config
-            } */
 
             // Recipients
             $mail->setFrom($this->from, $this->fromName);
