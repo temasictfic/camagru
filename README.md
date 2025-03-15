@@ -43,7 +43,7 @@ A web application that allows users to create and share photos with applied filt
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/camagru.git
+   git clone https://github.com/temasictfic/camagru.git
    cd camagru
    ```
 
