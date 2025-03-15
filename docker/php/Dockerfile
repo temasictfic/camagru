@@ -32,8 +32,9 @@ RUN composer require phpmailer/phpmailer
 # Copy existing application directory
 COPY . /var/www/html
 
-# Change ownership to www-data
+# Change ownership to www-data and set permissions
 RUN chown -R www-data:www-data /var/www/html
+RUN chmod -R 755 /var/www/html/
 
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
