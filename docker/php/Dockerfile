@@ -26,6 +26,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 # Set working directory
 WORKDIR /var/www/html
 
+# Install PHPMailer
+RUN composer require phpmailer/phpmailer
+
 # Copy existing application directory
 COPY . /var/www/html
 
