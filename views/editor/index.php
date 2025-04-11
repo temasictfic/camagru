@@ -50,7 +50,7 @@ ob_start();
                 </div>
                 <div class="control-group">
                     <label for="rotateSlider">Rotate: <span id="rotateValue">0°</span></label>
-                    <input type="range" id="rotateSlider" min="0" max="359" value="0" class="slider">
+                    <input type="range" id="rotateSlider" min="-180" max="180" value="0" class="slider">
                 </div>
                 <div class="control-group">
                     <button id="moveLeftBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-left"></i></button>
@@ -231,7 +231,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (rotateSlider) {
         rotateSlider.addEventListener('input', function() {
-            const rotation = this.value;
+            const rotation = parseInt(this.value);
             rotateValue.textContent = rotation + '°';
             overlayData.rotation = rotation;
             updateOverlayTransform();
@@ -416,7 +416,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!overlayImg) return;
         
-        // Apply transformation
+        // Apply transformation (rotation can now be negative)
         overlayImg.style.transform = `translate(${overlayData.x}px, ${overlayData.y}px) scale(${overlayData.scale}) rotate(${overlayData.rotation}deg)`;
         
         // Center the overlay
@@ -427,7 +427,7 @@ document.addEventListener('DOMContentLoaded', function() {
             overlayDataInput.value = JSON.stringify(overlayData);
         }
     }
-    
+
     function resetOverlay() {
         // Reset transform data
         overlayData = {
@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Reset controls
         if (scaleSlider) scaleSlider.value = 100;
-        if (rotateSlider) rotateSlider.value = 0;
+        if (rotateSlider) rotateSlider.value = 0; // Reset to center (0 degrees)
         if (scaleValue) scaleValue.textContent = '100%';
         if (rotateValue) rotateValue.textContent = '0°';
         
