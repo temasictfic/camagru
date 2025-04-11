@@ -645,16 +645,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentOverlayImg && overlayDataInput) {
             // Get actual preview and target dimensions
             const previewRect = camera.getBoundingClientRect();
-            const targetWidth = canvas.width;
-            const targetHeight = canvas.height;
             
             // Enhance overlay data with preview and target dimensions
             const enhancedData = {
                 ...overlayData,
                 previewWidth: previewRect.width,
                 previewHeight: previewRect.height,
-                targetWidth: targetWidth,
-                targetHeight: targetHeight
             };
             
             overlayDataInput.value = JSON.stringify(enhancedData);

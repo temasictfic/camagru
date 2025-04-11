@@ -224,8 +224,6 @@ class ImageProcessor {
                     // Get proportional coordinates
                     $previewWidth = isset($data['previewWidth']) ? (float)$data['previewWidth'] : $imageWidth;
                     $previewHeight = isset($data['previewHeight']) ? (float)$data['previewHeight'] : $imageHeight;
-                    $targetWidth = isset($data['targetWidth']) ? (float)$data['targetWidth'] : $imageWidth;
-                    $targetHeight = isset($data['targetHeight']) ? (float)$data['targetHeight'] : $imageHeight;
                     
                     // Calculate position based on proportions, not absolute pixels
                     // This ensures the relative position in the preview is maintained
@@ -236,8 +234,8 @@ class ImageProcessor {
                         
                         // Apply these percentages to the actual image dimensions
                         // Subtract half the overlay width/height to center it properly
-                        $x = ($xPercent * $imageWidth) - ($newWidth / 2);
-                        $y = ($yPercent * $imageHeight) - ($newHeight / 2);
+                        $x = ($xPercent * $imageWidth);
+                        $y = ($yPercent * $imageHeight);
                         
                         error_log("Position calculation: X%: {$xPercent}, Y%: {$yPercent}");
                         error_log("Final position: X: {$x}, Y: {$y}");
