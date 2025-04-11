@@ -222,15 +222,15 @@ class ImageProcessor {
                     $rotation = isset($data['rotation']) ? (float)$data['rotation'] : 0;
                     
                     // Get proportional coordinates
-                    $previewWidth = isset($data['previewWidth']) ? (float)$data['previewWidth'] : $imageWidth;
-                    $previewHeight = isset($data['previewHeight']) ? (float)$data['previewHeight'] : $imageHeight;
+                    $containerWidth = isset($data['containerWidth']) ? (float)$data['containerWidth'] : $imageWidth;
+                    $containerHeight = isset($data['containerHeight']) ? (float)$data['containerHeight'] : $imageHeight;
                     
                     // Calculate position based on proportions, not absolute pixels
                     // This ensures the relative position in the preview is maintained
                     if (isset($data['x']) && isset($data['y'])) {
                         // Convert the x,y offset to percentages of preview dimensions
-                        $xPercent = ($data['x'] + $previewWidth/2) / $previewWidth;
-                        $yPercent = ($data['y'] + $previewHeight/2) / $previewHeight;
+                        $xPercent = ($data['x'] + $containerWidth/2) / $containerWidth;
+                        $yPercent = ($data['y'] + $containerHeight/2) / $containerHeight;
                         
                         // Apply these percentages to the actual image dimensions
                         // Subtract half the overlay width/height to center it properly

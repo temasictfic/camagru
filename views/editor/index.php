@@ -644,13 +644,13 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add overlay data to form if an overlay is selected
         if (currentOverlayImg && overlayDataInput) {
             // Get actual preview and target dimensions
-            const previewRect = camera.getBoundingClientRect();
+            const container = overlayContainer.getBoundingClientRect();
             
             // Enhance overlay data with preview and target dimensions
             const enhancedData = {
                 ...overlayData,
-                previewWidth: previewRect.width,
-                previewHeight: previewRect.height,
+                containerWidth: container.width,
+                containerHeight: container.height
             };
             
             overlayDataInput.value = JSON.stringify(enhancedData);
@@ -713,10 +713,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add overlay data to form if an overlay is selected
         if (uploadOverlayImg && overlayDataInput) {
-            overlayDataInput.value = JSON.stringify(overlayData);
+            // Get container dimensions
+            const container = overlayContainerUpload.getBoundingClientRect();
+            
+            // Create enhanced data object with all necessary information
+            const enhancedData = {
+                ...overlayData,
+                containerWidth: container.width,
+                containerHeight: container.height
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
             console.log('Upload overlay data:', overlayDataInput.value);
         } else {
             overlayDataInput.value = '';
+            console.log('No overlay selected for upload or overlay element not found');
         }
         
         // Show loading state
@@ -747,6 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error('The image is too large.');
                 }
                 return response.text().then(text => {
+                    console.log('Server error response:', text);
                     try {
                         return JSON.parse(text);
                     } catch (e) {
@@ -774,6 +786,7 @@ document.addEventListener('DOMContentLoaded', function() {
             captureButton.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
         });
     }
+
     
     // Initialize camera mode by default
     startCamera();
