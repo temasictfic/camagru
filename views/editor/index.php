@@ -12,7 +12,10 @@ ob_start();
             <div class="editor-actions">
                 <button id="startCamera" class="btn btn-primary"><i class="fas fa-camera"></i> Start Camera</button>
                 <button id="switchToUpload" class="btn btn-secondary"><i class="fas fa-upload"></i> Switch to Upload</button>
-                <button id="clearOverlayBtn" class="btn btn-secondary"><i class="fas fa-times"></i> Clear Overlay</button>
+                <!-- Moved the capture/create button here -->
+                <button type="submit" id="captureButton" class="btn btn-success">
+                    <i class="fas fa-camera"></i> Capture Photo
+                </button>
             </div>
             
             <div class="camera-container">
@@ -55,6 +58,8 @@ ob_start();
                     <button id="moveUpBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-up"></i></button>
                     <button id="moveDownBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-down"></i></button>
                     <button id="resetOverlayBtn" class="btn btn-small btn-secondary"><i class="fas fa-sync-alt"></i> Reset</button>
+                    <!-- Moved the Clear Overlay button here -->
+                    <button id="clearOverlayBtn" class="btn btn-small btn-secondary"><i class="fas fa-times"></i> Clear</button>
                 </div>
             </div>
             
@@ -69,19 +74,14 @@ ob_start();
                 </div>
             </div>
             
-            <div class="capture-action">
-                <form id="captureForm" action="/editor/capture" method="POST">
-                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="image_data" id="imageData">
-                    <input type="hidden" name="overlay" id="overlayInput" value="">
-                    <input type="hidden" name="overlay_data" id="overlayDataInput" value="">
-                    <input type="file" id="fileInput" name="image" accept="image/jpeg, image/png" style="display: none;">
-                    
-                    <button type="submit" id="captureButton" class="btn btn-success btn-block">
-                        <i class="fas fa-camera"></i> Capture Photo
-                    </button>
-                </form>
-            </div>
+            <!-- Hidden form for submitting the image data -->
+            <form id="captureForm" action="/editor/capture" method="POST" style="display: none;">
+                <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                <input type="hidden" name="image_data" id="imageData">
+                <input type="hidden" name="overlay" id="overlayInput" value="">
+                <input type="hidden" name="overlay_data" id="overlayDataInput" value="">
+                <input type="file" id="fileInput" name="image" accept="image/jpeg, image/png" style="display: none;">
+            </form>
         </div>
         
         <div class="editor-sidebar">
@@ -202,8 +202,8 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    if (captureForm) {
-        captureForm.addEventListener('submit', function(e) {
+    if (captureButton) {
+        captureButton.addEventListener('click', function(e) {
             e.preventDefault();
             if (isUploadMode) {
                 uploadImage();
