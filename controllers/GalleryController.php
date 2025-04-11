@@ -219,6 +219,12 @@ class GalleryController {
                 foreach ($comments as $comment) {
                     if ($comment['id'] == $commentId) {
                         $newComment = $comment;
+                        
+                        // For AJAX responses, format the date as ISO 8601 to let JavaScript handle localization
+                        $timestamp = strtotime($newComment['created_at']);
+                        $newComment['created_at_iso'] = date('c', $timestamp);
+                        $newComment['created_at_formatted'] = formatDate($newComment['created_at']);
+                        
                         break;
                     }
                 }

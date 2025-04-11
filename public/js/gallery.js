@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize localization of dates when page loads
+    localizeAllDates();
+    
     // Modal functionality
     const modal = document.getElementById('imageModal');
     if (modal) {
@@ -157,7 +160,30 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const commentDate = document.createElement('span');
             commentDate.className = 'comment-date';
-            commentDate.textContent = formatDate(comment.created_at);
+            
+            // If the server sent an ISO date, use it for localization
+            if (comment.created_at_iso) {
+                commentDate.textContent = formatDateToLocalTime(comment.created_at_iso);
+            } 
+            // If the server sent pre-formatted HTML with data attribute
+            else if (comment.created_at_formatted && comment.created_at_formatted.includes('data-utc')) {
+                // Create a temporary div to parse the HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = comment.created_at_formatted;
+                
+                // Extract the UTC timestamp from the data attribute
+                const dateElement = tempDiv.querySelector('.date-to-localize');
+                if (dateElement && dateElement.getAttribute('data-utc')) {
+                    commentDate.textContent = formatDateToLocalTime(dateElement.getAttribute('data-utc'));
+                } else {
+                    // Fallback if no data attribute
+                    commentDate.textContent = formatDateToLocalTime(comment.created_at);
+                }
+            } 
+            // Fallback to direct formatting
+            else {
+                commentDate.textContent = formatDateToLocalTime(comment.created_at);
+            }
             
             const commentContent = document.createElement('div');
             commentContent.className = 'comment-content';
@@ -171,21 +197,30 @@ document.addEventListener('DOMContentLoaded', function() {
             
             return commentElement;
         }
-        
-        // Helper function to format date
-        function formatDate(dateString) {
-            const date = new Date(dateString);
-            const options = { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            };
-            return date.toLocaleDateString('en-US', options);
-        }
     }
     
-    // Load more images for infinite scrolling (bonus)
-    // This would be implemented here if doing the infinite scrolling bonus
+    // Function to format date in local time with 24-hour format
+    function formatDateToLocalTime(dateString) {
+        const date = new Date(dateString);
+        const options = { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false // Use 24-hour format instead of AM/PM
+        };
+        return date.toLocaleDateString(undefined, options);
+    }
+    
+    // Function to localize all dates on the page
+    function localizeAllDates() {
+        const dateElements = document.querySelectorAll('.date-to-localize');
+        dateElements.forEach(element => {
+            const utcDate = element.getAttribute('data-utc');
+            if (utcDate) {
+                element.textContent = formatDateToLocalTime(utcDate);
+            }
+        });
+    }
 });
