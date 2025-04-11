@@ -175,12 +175,7 @@ class ImageProcessor {
      */
     private function applyOverlay($image, $overlayName, $overlayData = null) {
         try {
-            // For debugging
-            error_log("Applying overlay: " . $overlayName);
-            if ($overlayData) {
-                error_log("With overlay data: " . $overlayData);
-            }
-            
+            // Load overlay
             $overlayPath = $this->overlaysDir . $overlayName;
             
             if (!file_exists($overlayPath)) {
@@ -205,11 +200,11 @@ class ImageProcessor {
             $overlayWidth = imagesx($overlay);
             $overlayHeight = imagesy($overlay);
             
-            error_log("Image dimensions: " . $imageWidth . "x" . $imageHeight);
-            error_log("Overlay dimensions: " . $overlayWidth . "x" . $overlayHeight);
+            error_log("Image dimensions: {$imageWidth}x{$imageHeight}");
+            error_log("Overlay dimensions: {$overlayWidth}x{$overlayHeight}");
             
             // Default values
-            $scale = 0.4; // 40% of original size
+            $scale = 0.4; // Default scale if none provided
             $rotation = 0;
             $x = 0;
             $y = 0;
@@ -218,36 +213,50 @@ class ImageProcessor {
             if ($overlayData) {
                 $data = json_decode($overlayData, true);
                 if ($data) {
-                    // Get scale (converted from user interface values)
+                    error_log("Overlay data: " . json_encode($data));
+                    
+                    // Get scale from data
                     $scale = isset($data['scale']) ? (float)$data['scale'] : 0.4;
                     
                     // Get rotation
                     $rotation = isset($data['rotation']) ? (float)$data['rotation'] : 0;
                     
-                    // Convert relative position to absolute position
-                    // x and y from UI are relative to center of preview
-                    $centerX = $imageWidth / 2;
-                    $centerY = $imageHeight / 2;
+                    // Get proportional coordinates
+                    $previewWidth = isset($data['previewWidth']) ? (float)$data['previewWidth'] : $imageWidth;
+                    $previewHeight = isset($data['previewHeight']) ? (float)$data['previewHeight'] : $imageHeight;
+                    $targetWidth = isset($data['targetWidth']) ? (float)$data['targetWidth'] : $imageWidth;
+                    $targetHeight = isset($data['targetHeight']) ? (float)$data['targetHeight'] : $imageHeight;
                     
-                    if (isset($data['x'])) {
-                        // Convert UI x position to absolute position
-                        $x = $data['x'];
+                    // Calculate position based on proportions, not absolute pixels
+                    // This ensures the relative position in the preview is maintained
+                    if (isset($data['x']) && isset($data['y'])) {
+                        // Convert the x,y offset to percentages of preview dimensions
+                        $xPercent = ($data['x'] + $previewWidth/2) / $previewWidth;
+                        $yPercent = ($data['y'] + $previewHeight/2) / $previewHeight;
+                        
+                        // Apply these percentages to the actual image dimensions
+                        // Subtract half the overlay width/height to center it properly
+                        $x = ($xPercent * $imageWidth) - ($newWidth / 2);
+                        $y = ($yPercent * $imageHeight) - ($newHeight / 2);
+                        
+                        error_log("Position calculation: X%: {$xPercent}, Y%: {$yPercent}");
+                        error_log("Final position: X: {$x}, Y: {$y}");
                     }
-                    
-                    if (isset($data['y'])) {
-                        // Convert UI y position to absolute position
-                        $y = $data['y'];
-                    }
-                    
-                    error_log("Using overlay data - Scale: $scale, Rotation: $rotation, X: $x, Y: $y");
                 }
             }
             
-            // Calculate new dimensions after scaling
-            $newWidth = $overlayWidth * $scale;
-            $newHeight = $overlayHeight * $scale;
             
-            error_log("Scaled overlay dimensions: " . $newWidth . "x" . $newHeight);
+            // Calculate new dimensions after scaling
+            // We need to scale based on the image dimensions ratio compared to the preview
+            $scaleRatio = min($imageWidth / $overlayWidth, $imageHeight / $overlayHeight);
+            $baseScale = $scaleRatio * 0.5; // Base scale to make overlay reasonable size relative to image
+            $finalScale = $baseScale * $scale; // Apply user scale factor
+            
+            $newWidth = $overlayWidth * $finalScale;
+            $newHeight = $overlayHeight * $finalScale;
+            
+            error_log("Scale ratio: {$scaleRatio}, Base scale: {$baseScale}, Final scale: {$finalScale}");
+            error_log("New overlay dimensions: {$newWidth}x{$newHeight}");
             
             // Create a new image for the scaled overlay
             $scaledOverlay = imagecreatetruecolor($newWidth, $newHeight);
@@ -273,16 +282,12 @@ class ImageProcessor {
                 $newHeight = imagesy($scaledOverlay);
             }
             
-            // Calculate position for overlay
-            // Center position
-            $posX = ($imageWidth - $newWidth) / 2;
-            $posY = ($imageHeight - $newHeight) / 2;
+            // Calculate final position
+            // If x and y are not set, center the overlay on the image
+            $posX = isset($x) ? $x : ($imageWidth - $newWidth) / 2;
+            $posY = isset($y) ? $y : ($imageHeight - $newHeight) / 2;
             
-            // Apply user offset
-            $posX += $x;
-            $posY += $y;
-            
-            error_log("Final overlay position: " . $posX . "," . $posY);
+            error_log("Final overlay position: {$posX},{$posY}");
             
             // Enable alpha blending on the destination image before copying
             imagealphablending($image, true);

@@ -416,15 +416,25 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!overlayImg) return;
         
-        // Apply transformation (rotation can now be negative)
+        // Apply transformation 
         overlayImg.style.transform = `translate(${overlayData.x}px, ${overlayData.y}px) scale(${overlayData.scale}) rotate(${overlayData.rotation}deg)`;
         
         // Center the overlay
         overlayImg.style.transformOrigin = 'center center';
         
-        // Update the hidden input with overlay data
+        // Update the hidden input with overlay data - include viewport dimensions for accurate scaling
         if (overlayDataInput) {
-            overlayDataInput.value = JSON.stringify(overlayData);
+            const container = isUploadMode ? 
+                overlayContainerUpload.getBoundingClientRect() : 
+                overlayContainer.getBoundingClientRect();
+                
+            const enhancedData = {
+                ...overlayData,
+                containerWidth: container.width,
+                containerHeight: container.height
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
         }
     }
 
@@ -633,7 +643,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add overlay data to form if an overlay is selected
         if (currentOverlayImg && overlayDataInput) {
-            overlayDataInput.value = JSON.stringify(overlayData);
+            // Get actual preview and target dimensions
+            const previewRect = camera.getBoundingClientRect();
+            const targetWidth = canvas.width;
+            const targetHeight = canvas.height;
+            
+            // Enhance overlay data with preview and target dimensions
+            const enhancedData = {
+                ...overlayData,
+                previewWidth: previewRect.width,
+                previewHeight: previewRect.height,
+                targetWidth: targetWidth,
+                targetHeight: targetHeight
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
             console.log('Overlay data:', overlayDataInput.value);
         } else {
             overlayDataInput.value = '';
