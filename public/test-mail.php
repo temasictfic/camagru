@@ -2,77 +2,84 @@
 // Include config and setup
 require_once __DIR__ . '/../config/setup.php';
 
+// Include the SMTP client
+require_once BASE_PATH . '/services/SMTPClient.php';
+
 // Test email connection
 echo "<h1>Email Connection Test</h1>";
 
-// Ensure PHPMailer autoloader is included
-require_once BASE_PATH . '/vendor/autoload.php';
-
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
-
 // Get email configuration from environment
-$host = getenv('MAIL_HOST');
-$port = getenv('MAIL_PORT');
+$host = getenv('MAIL_HOST') ?: 'mailhog';
+$port = getenv('MAIL_PORT') ?: '1025';
 $from = getenv('MAIL_FROM') ?: 'test@camagru.local';
+$fromName = 'Test Sender';
+$to = 'test@example.com';
+$subject = 'SMTP Test Email';
+$message = '<div style="font-family: Arial, sans-serif; color: #333;">
+    <h2>This is a test email</h2>
+    <p>This email was sent using the custom SMTPClient.</p>
+    <p>If you received this email, the connection to MailHog is working!</p>
+</div>';
 
 echo "<p>Testing connection to mail server: $host:$port</p>";
 
-// Create a new PHPMailer instance
-$mail = new PHPMailer(true);
+// Create new SMTPClient instance with debug mode enabled
+$smtp = new SMTPClient($host, $port, null, null, true);
 
 try {
-    // Enable verbose debug output
-    $mail->SMTPDebug = SMTP::DEBUG_SERVER; // Enable verbose debug output
-    $mail->Debugoutput = 'html';
-
-    // Server settings
-    $mail->isSMTP();
-    $mail->Host       = $host;
-    $mail->Port       = $port;
-    
-    // Disable authentication for MailHog
-    $mail->SMTPAuth   = false;
-    
-    // Disable encryption for MailHog
-    $mail->SMTPSecure = '';
-    $mail->SMTPAutoTLS = false;
-
-    // Set sender and recipient
-    $mail->setFrom($from, 'Test Sender');
-    $mail->addAddress('test@example.com', 'Test Recipient');
-
-    // Content
-    $mail->isHTML(true);
-    $mail->Subject = 'PHPMailer Test';
-    $mail->Body    = 'This is a test email to verify MailHog connection works.';
-
-    // Send the email
-    echo "<p>Attempting to send test email...</p>";
-    $mail->send();
-    echo "<p style='color: green;'>Message has been sent successfully!</p>";
-    
-    echo "<p>You can check the received email at <a href='http://localhost:8025' target='_blank'>MailHog Web Interface (localhost:8025)</a></p>";
-    
-} catch (Exception $e) {
-    echo "<p style='color: red;'>Message could not be sent. Mailer Error: {$mail->ErrorInfo}</p>";
-    
-    // Additional debugging info
-    echo "<h2>Debugging Information</h2>";
     echo "<pre>";
-    echo "Host: $host\n";
-    echo "Port: $port\n";
-    echo "From: $from\n";
     
-    // Test network connectivity
-    echo "\nTesting network connectivity...\n";
-    $connection = @fsockopen($host, $port, $errno, $errstr, 5);
-    if (!$connection) {
-        echo "Failed to connect to $host:$port - $errstr ($errno)\n";
+    // Connect to server
+    echo "Connecting to SMTP server... ";
+    if ($smtp->connect()) {
+        echo "SUCCESS\n";
+        
+        // Send a test email
+        echo "Sending test email... ";
+        if ($smtp->sendEmail($from, $fromName, $to, $subject, $message)) {
+            echo "SUCCESS\n";
+            echo "</pre>";
+            
+            echo "<p style='color: green;'>Message has been sent successfully!</p>";
+            echo "<p>You can check the received email at <a href='http://localhost:8025' target='_blank'>MailHog Web Interface (localhost:8025)</a></p>";
+            
+            // Email details
+            echo "<h2>Email Details</h2>";
+            echo "<ul>";
+            echo "<li><strong>From:</strong> $fromName &lt;$from&gt;</li>";
+            echo "<li><strong>To:</strong> $to</li>";
+            echo "<li><strong>Subject:</strong> $subject</li>";
+            echo "</ul>";
+            
+            echo "<h3>Message Content:</h3>";
+            echo "<div style='border: 1px solid #ddd; padding: 10px; margin: 10px 0; max-width: 600px;'>";
+            echo $message;
+            echo "</div>";
+        } else {
+            echo "FAILED\n";
+            echo "</pre>";
+            echo "<p style='color: red;'>Failed to send email. Check the error log for details.</p>";
+        }
+        
+        // Close the connection
+        $smtp->close();
     } else {
-        echo "Successfully connected to $host:$port\n";
-        fclose($connection);
+        echo "FAILED\n";
+        echo "</pre>";
+        echo "<p style='color: red;'>Failed to connect to SMTP server. Check the error log for details.</p>";
     }
+} catch (Exception $e) {
+    echo "EXCEPTION: " . $e->getMessage() . "\n";
     echo "</pre>";
+    echo "<p style='color: red;'>Exception: " . $e->getMessage() . "</p>";
+}
+
+// Test network connectivity
+echo "<h2>Network Connectivity Test</h2>";
+$connection = @fsockopen($host, $port, $errno, $errstr, 5);
+if (!$connection) {
+    echo "<p style='color: red;'>Failed to connect to $host:$port - $errstr ($errno)</p>";
+} else {
+    echo "<p style='color: green;'>Successfully connected to $host:$port</p>";
+    fclose($connection);
 }

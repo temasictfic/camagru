@@ -1,33 +1,25 @@
-FROM php:8.2-fpm
+FROM php:8.2-fpm-alpine
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    git \
-    curl \
+# Install minimal system dependencies
+RUN apk add --no-cache \
+    libpng \
+    libjpeg-turbo \
+    freetype \
+    libxml2
+
+# Install PHP extensions using the docker-php-ext-install script
+RUN apk add --no-cache --virtual .build-deps \
     libpng-dev \
-    libonig-dev \
+    libjpeg-turbo-dev \
+    freetype-dev \
     libxml2-dev \
-    zip \
-    unzip \
-    libfreetype6-dev \
-    libjpeg62-turbo-dev \
-    libgd-dev
-
-# Clear cache
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
-
-# Install PHP extensions
-RUN docker-php-ext-configure gd --with-freetype --with-jpeg
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
-
-# Get latest Composer
-COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+    oniguruma-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install -j$(nproc) pdo_mysql mbstring exif pcntl bcmath gd \
+    && apk del .build-deps
 
 # Set working directory
 WORKDIR /var/www/html
-
-# Install PHPMailer
-RUN composer require phpmailer/phpmailer
 
 # Copy existing application directory
 COPY . /var/www/html
