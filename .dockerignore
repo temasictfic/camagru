@@ -1,0 +1,56 @@
+# Git
+.git
+.gitignore
+
+# IDE files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# User uploaded content
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Environment files
+.env
+
+# Dependencies
+vendor/
+node_modules/
+
+# Docker
+docker-compose.yml
+Dockerfile
+.dockerignore
+
+# Logs and databases
+*.log
+*.sql
+*.sqlite
+
+# Cache files
+*.cache
+
+# Documentation
+README.md
+LICENSE
+
+# Debug files
+public/debug.php
+public/fix-email.php
+public/test-mail.php
+
+# Build files
+*.tar
+*.gz
+*.zip
