@@ -181,3 +181,17 @@
         width: 100%;
     }
 }
+
+
+.btn-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Make sure the disabled button is clearly visible as disabled */
+.btn.btn-disabled {
+    background-color: #cccccc;
+    color: #666666;
+    border: 1px solid #999999;
+}

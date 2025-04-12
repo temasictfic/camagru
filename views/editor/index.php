@@ -175,6 +175,12 @@ document.addEventListener('DOMContentLoaded', function() {
     let uploadOverlayImg = null;
     let isUploadMode = false;
     
+    // Disable the capture button initially
+    if (captureButton) {
+        captureButton.disabled = true;
+        captureButton.classList.add('btn-disabled');
+    }
+    
     // Overlay position/transformation data
     let overlayData = {
         scale: 1,
@@ -367,6 +373,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update hidden input
         overlayInput.value = selectedOverlay;
         
+        // Enable the capture button now that an overlay is selected
+        if (captureButton) {
+            captureButton.disabled = false;
+            captureButton.classList.remove('btn-disabled');
+        }
+        
         // Reset overlay transform data
         resetOverlay();
         
@@ -469,6 +481,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update hidden input
         overlayInput.value = '';
         
+        // Disable the capture button since no overlay is selected
+        if (captureButton) {
+            captureButton.disabled = true;
+            captureButton.classList.add('btn-disabled');
+        }
+        
         // Clear overlays
         if (overlayContainer) {
             overlayContainer.innerHTML = '';
@@ -515,9 +533,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     camera.style.display = 'block';
                     cameraPlaceholder.style.display = 'none';
                     
-                    // Enable capture button
-                    captureButton.disabled = false;
-                    
                     // If there's a selected overlay, reapply it
                     if (selectedOverlay) {
                         // Find the corresponding overlay item
@@ -526,6 +541,12 @@ document.addEventListener('DOMContentLoaded', function() {
                                 selectOverlay(item);
                             }
                         });
+                    } else {
+                        // Make sure capture button is disabled if no overlay is selected
+                        if (captureButton) {
+                            captureButton.disabled = true;
+                            captureButton.classList.add('btn-disabled');
+                        }
                     }
                 })
                 .catch(function(error) {
@@ -571,6 +592,12 @@ document.addEventListener('DOMContentLoaded', function() {
         startCameraBtn.classList.add('btn-secondary');
         switchToUploadBtn.classList.remove('btn-secondary');
         switchToUploadBtn.classList.add('btn-primary');
+        
+        // If no overlay is selected, keep capture button disabled
+        if (!selectedOverlay && captureButton) {
+            captureButton.disabled = true;
+            captureButton.classList.add('btn-disabled');
+        }
     }
     
     function previewSelectedImage(input) {
@@ -599,6 +626,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             selectOverlay(item);
                         }
                     });
+                } else {
+                    // Make sure capture button is disabled if no overlay is selected
+                    if (captureButton) {
+                        captureButton.disabled = true;
+                        captureButton.classList.add('btn-disabled');
+                    }
                 }
             }
             reader.readAsDataURL(input.files[0]);
@@ -786,7 +819,6 @@ document.addEventListener('DOMContentLoaded', function() {
             captureButton.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
         });
     }
-
     
     // Initialize camera mode by default
     startCamera();
