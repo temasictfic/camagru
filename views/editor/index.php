@@ -1,6 +1,7 @@
 <?php
 $title = 'Photo Editor | Camagru';
 $extraCss = ['/css/editor.css']; // Add the editor CSS
+$extraJs = ['/js/editor-gallery.js']; // We'll create a new JS file for handling the editor gallery
 ob_start();
 ?>
 
@@ -95,11 +96,12 @@ ob_start();
                 <div class="user-images">
                     <?php foreach ($userImages as $image): ?>
                         <div class="user-image">
-                            <img src="/uploads/<?= $image['filename'] ?>" alt="Your photo">
+                            <!-- Changed this to a data-attribute with image ID rather than direct link to gallery -->
+                            <img src="/uploads/<?= $image['filename'] ?>" alt="Your photo" class="view-image" data-image-id="<?= $image['id'] ?>">
                             <div class="user-image-actions">
-                                <a href="/gallery?image=<?= $image['id'] ?>" class="btn btn-small btn-primary">
+                                <button type="button" class="btn btn-small btn-primary view-image-btn" data-image-id="<?= $image['id'] ?>">
                                     <i class="fas fa-eye"></i>
-                                </a>
+                                </button>
                                 <form action="/editor/delete" method="POST" class="delete-form">
                                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                     <input type="hidden" name="image_id" value="<?= $image['id'] ?>">
@@ -130,7 +132,62 @@ ob_start();
     </div>
 </div>
 
-<!-- Inline JavaScript -->
+<!-- Image modal for viewing photos -->
+<div class="modal" id="imageModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="close">&times;</span>
+            <h2>Your Photo</h2>
+        </div>
+        <div class="modal-body">
+            <div class="image-details">
+                <img id="modalImage" src="" alt="Your photo">
+                
+                <div class="image-actions">
+                    <?php if (isLoggedIn()): ?>
+                        <form action="/gallery/like" method="POST" class="like-form">
+                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                            <input type="hidden" name="image_id" id="modalImageId" value="">
+                            <button type="submit" class="btn-like" id="likeButton">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <button class="btn-like disabled">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    <?php endif; ?>
+                    <span class="likes-count" id="likesCount">0 likes</span>
+                </div>
+                
+                <div class="comments-section">
+                    <h3>Comments</h3>
+                    
+                    <?php if (isLoggedIn()): ?>
+                        <form action="/gallery/comment" method="POST" class="comment-form">
+                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                            <input type="hidden" name="image_id" id="commentImageId" value="">
+                            <div class="form-group">
+                                <textarea name="content" placeholder="Add a comment..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Post</button>
+                            </div>
+                        </form>
+                    <?php else: ?>
+                        <p><a href="/login">Log in</a> to leave a comment.</p>
+                    <?php endif; ?>
+                    
+                    <div class="comments-list">
+                        <!-- Comments will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include the original editor.js script for editor functionality -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // DOM elements
