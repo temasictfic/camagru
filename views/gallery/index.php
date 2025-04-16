@@ -7,11 +7,15 @@ ob_start();
 <div class="gallery-container">
     <h1>Photo Gallery</h1>
     
+    <!-- Store current page in a hidden field for JavaScript -->
+    <input type="hidden" id="current-page" value="<?= $page ?? 1 ?>">
+    
     <?php if ($singleImage): ?>
         <div class="modal" id="imageModal">
             <div class="modal-content">
                 <div class="modal-header">
-                    <span class="close">&times;</span>
+                    <!-- Add data-page attribute to the close button -->
+                    <span class="close" data-page="<?= $page ?? 1 ?>">&times;</span>
                     <h2>Photo by <?= $singleImage['username'] ?></h2>
                 </div>
                 <div class="modal-body">
@@ -23,6 +27,8 @@ ob_start();
                                 <form action="/gallery/like" method="POST" class="like-form">
                                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                     <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                    <!-- Add page as a hidden input -->
+                                    <input type="hidden" name="page" value="<?= $page ?? 1 ?>">
                                     <button type="submit" class="btn-like <?= $this->imageModel->isLikedByUser($singleImage['id'], getCurrentUserId()) ? 'liked' : '' ?>">
                                         <i class="fas fa-heart"></i>
                                     </button>
@@ -42,6 +48,8 @@ ob_start();
                                     <form action="/gallery/comment" method="POST" class="comment-form">
                                         <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                         <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                        <!-- Add page as a hidden input -->
+                                        <input type="hidden" name="page" value="<?= $page ?? 1 ?>">
                                         <div class="form-group">
                                             <textarea name="content" placeholder="Add a comment..." required></textarea>
                                         </div>
@@ -81,6 +89,8 @@ ob_start();
                                                             <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                                             <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
                                                             <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                                            <!-- Add page as a hidden input -->
+                                                            <input type="hidden" name="page" value="<?= $page ?? 1 ?>">
                                                             <div class="form-group">
                                                                 <textarea name="content" required><?= htmlspecialchars($comment['content']) ?></textarea>
                                                             </div>
@@ -95,6 +105,8 @@ ob_start();
                                                         <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                                         <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
                                                         <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                                        <!-- Add page as a hidden input -->
+                                                        <input type="hidden" name="page" value="<?= $page ?? 1 ?>">
                                                     </form>
                                                 <?php endif; ?>
                                             </div>
@@ -122,7 +134,8 @@ ob_start();
         <div class="image-grid">
             <?php foreach ($images as $image): ?>
                 <div class="image-card">
-                    <a href="/gallery?image=<?= $image['id'] ?>" class="image-link">
+                    <!-- Preserve page number in the URL when clicking an image -->
+                    <a href="/gallery?image=<?= $image['id'] ?>&page=<?= $page ?? 1 ?>" class="image-link">
                         <img src="/uploads/<?= $image['filename'] ?>" alt="Image by <?= $image['username'] ?>">
                     </a>
                     <div class="image-info">
@@ -157,3 +170,4 @@ ob_start();
 <?php
 $content = ob_get_clean();
 require_once BASE_PATH . '/views/templates/layout.php';
+?>

@@ -43,6 +43,9 @@ class GalleryController {
             }
         }
         
+        // Store current page in a hidden input for JavaScript to access
+        $currentPage = $page;
+        
         require_once BASE_PATH . '/views/gallery/index.php';
     }
     
@@ -118,7 +121,9 @@ class GalleryController {
                 ]);
                 exit;
             } else {
-                redirect('/gallery?image=' . $imageId);
+                // Keep the page parameter when redirecting
+                $page = isset($_POST['page']) ? (int)$_POST['page'] : 1;
+                redirect('/gallery?image=' . $imageId . '&page=' . $page);
             }
         } catch (Exception $e) {
             if (Security::isAjaxRequest()) {

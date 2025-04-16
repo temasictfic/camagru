@@ -7,25 +7,42 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modal) {
         const closeBtn = modal.querySelector('.close');
         
-        // Close modal when clicking the X
-        closeBtn.addEventListener('click', function() {
-            window.history.pushState({}, '', window.location.pathname);
+        // Get the current page from the hidden input or close button data attribute
+        const currentPage = document.getElementById('current-page')?.value || 
+                           closeBtn?.getAttribute('data-page') || 
+                           1;
+        
+        // Function to close modal and redirect to gallery with page parameter
+        function closeModal() {
+            // Hide the modal
             modal.style.display = 'none';
-        });
+            
+            // Build the redirect URL with page parameter
+            const redirectUrl = `/gallery?page=${currentPage}`;
+            
+            // Update browser history and navigate
+            window.location.href = redirectUrl;
+        }
+        
+        // Close modal when clicking the X
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                closeModal();
+            });
+        }
         
         // Close modal when clicking outside the modal content
         window.addEventListener('click', function(event) {
             if (event.target === modal) {
-                window.history.pushState({}, '', window.location.pathname);
-                modal.style.display = 'none';
+                closeModal();
             }
         });
         
         // Close modal when pressing ESC key
         document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                window.history.pushState({}, '', window.location.pathname);
-                modal.style.display = 'none';
+            if (event.key === 'Escape' && modal.style.display !== 'none') {
+                closeModal();
             }
         });
     }
@@ -240,12 +257,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             const csrfToken = document.querySelector('input[name="csrf_token"]').value;
             const imageId = document.querySelector('input[name="image_id"]').value;
+            const currentPage = document.getElementById('current-page')?.value || 1;
             
             editFormContainer.innerHTML = `
                 <form action="/gallery/comment/update" method="POST" class="edit-comment-form">
                     <input type="hidden" name="csrf_token" value="${csrfToken}">
                     <input type="hidden" name="comment_id" value="${comment.id}">
                     <input type="hidden" name="image_id" value="${imageId}">
+                    <input type="hidden" name="page" value="${currentPage}">
                     <div class="form-group">
                         <textarea name="content" required>${comment.content}</textarea>
                     </div>
@@ -267,6 +286,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <input type="hidden" name="csrf_token" value="${csrfToken}">
                 <input type="hidden" name="comment_id" value="${comment.id}">
                 <input type="hidden" name="image_id" value="${imageId}">
+                <input type="hidden" name="page" value="${currentPage}">
             `;
             
             commentElement.appendChild(editFormContainer);
