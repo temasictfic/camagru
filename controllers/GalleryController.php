@@ -19,7 +19,7 @@ class GalleryController {
         }
         
         // Get number of images per page
-        $limit = 5;
+        $limit = 6;
         
         // Get images
         $images = $this->imageModel->findAll($page, $limit);
