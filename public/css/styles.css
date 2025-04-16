@@ -803,3 +803,131 @@ label[for="imageUpload"] {
 #uploadSubmit {
   width: 100%;
 }
+
+/* Comment actions and edit form */
+/* Comment container */
+.comment {
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+/* Comment header - contains the author name and date */
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.comment-author {
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.comment-date {
+  color: var(--gray-color);
+  font-size: 0.875rem;
+  margin-left: auto; /* Push to the right */
+}
+
+/* Content container with actions */
+.comment-content-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.comment-content {
+  flex: 1;
+  line-height: 1.5;
+  white-space: pre-line; /* Preserve line breaks */
+  padding-right: 1rem; /* Space between content and actions */
+}
+
+.comment-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 0.5rem;
+}
+
+/* Button styling */
+.btn-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: var(--gray-color);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-link:hover {
+  color: var(--primary-color);
+}
+
+.btn-edit-comment:hover {
+  color: var(--primary-color);
+}
+
+.btn-delete-comment:hover {
+  color: var(--danger-color);
+}
+
+/* Comment edit form */
+.comment-edit-form {
+  margin-top: 0.5rem;
+}
+
+.comment-edit-form textarea {
+  min-height: 80px;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.edit-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+/* Animation for updates and deletion */
+.comment.deleting {
+  animation: fadeOut 0.5s;
+}
+
+.comment.updating {
+  animation: flash 0.5s;
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes flash {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(69, 182, 254, 0.1); }
+}
+
+/* Make the layout more responsive for smaller screens */
+@media (max-width: 576px) {
+  .comment-content-container {
+    flex-direction: column;
+  }
+  
+  .comment-content {
+    padding-right: 0;
+    margin-bottom: 0.5rem;
+  }
+  
+  .comment-actions {
+    flex-direction: row;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

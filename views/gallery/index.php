@@ -36,37 +36,71 @@ ob_start();
                         </div>
                         
                         <div class="comments-section">
-                            <h3>Comments</h3>
-                            
-                            <?php if (isLoggedIn()): ?>
-                                <form action="/gallery/comment" method="POST" class="comment-form">
-                                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                                    <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
-                                    <div class="form-group">
-                                        <textarea name="content" placeholder="Add a comment..." required></textarea>
-                                    </div>
-                                    <div class="form-group">
-                                        <button type="submit" class="btn btn-primary">Post</button>
-                                    </div>
-                                </form>
-                            <?php else: ?>
-                                <p><a href="/login">Log in</a> to leave a comment.</p>
-                            <?php endif; ?>
-                            
-                            <div class="comments-list">
-                                <?php if (empty($comments)): ?>
-                                    <p>No comments yet.</p>
-                                <?php else: ?>
-                                    <?php foreach ($comments as $comment): ?>
-                                        <div class="comment">
-                                            <div class="comment-header">
-                                                <span class="comment-author"><?= $comment['username'] ?></span>
-                                                <span class="comment-date"><?= formatDate($comment['created_at']) ?></span>
-                                            </div>
-                                            <div class="comment-content"><?= nl2br(htmlspecialchars($comment['content'])) ?></div>
+                                <h3>Comments</h3>
+                                
+                                <?php if (isLoggedIn()): ?>
+                                    <form action="/gallery/comment" method="POST" class="comment-form">
+                                        <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                                        <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                        <div class="form-group">
+                                            <textarea name="content" placeholder="Add a comment..." required></textarea>
                                         </div>
-                                    <?php endforeach; ?>
+                                        <div class="form-group">
+                                            <button type="submit" class="btn btn-primary">Post</button>
+                                        </div>
+                                    </form>
+                                <?php else: ?>
+                                    <p><a href="/login">Log in</a> to leave a comment.</p>
                                 <?php endif; ?>
+                                
+                                <div class="comments-list">
+                                    <?php if (empty($comments)): ?>
+                                        <p>No comments yet.</p>
+                                    <?php else: ?>
+                                        <?php foreach ($comments as $comment): ?>
+                                            <div class="comment" data-id="<?= $comment['id'] ?>">
+                                                <div class="comment-header">
+                                                    <span class="comment-author"><?= $comment['username'] ?></span>
+                                                    <span class="comment-date"><?= formatDate($comment['created_at']) ?></span>
+                                                </div>
+                                                
+                                                <div class="comment-content-container">
+                                                    <div class="comment-content"><?= nl2br(htmlspecialchars($comment['content'])) ?></div>
+                                                    
+                                                    <?php if (isLoggedIn() && getCurrentUserId() == $comment['user_id']): ?>
+                                                        <div class="comment-actions">
+                                                            <button class="btn-edit-comment btn-link" title="Edit"><i class="fas fa-edit"></i></button>
+                                                            <button class="btn-delete-comment btn-link" title="Delete"><i class="fas fa-trash"></i></button>
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                                
+                                                <?php if (isLoggedIn() && getCurrentUserId() == $comment['user_id']): ?>
+                                                    <div class="comment-edit-form" style="display: none;">
+                                                        <form action="/gallery/comment/update" method="POST" class="edit-comment-form">
+                                                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                                                            <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
+                                                            <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                                            <div class="form-group">
+                                                                <textarea name="content" required><?= htmlspecialchars($comment['content']) ?></textarea>
+                                                            </div>
+                                                            <div class="form-group edit-buttons">
+                                                                <button type="button" class="btn btn-secondary btn-cancel-edit">Cancel</button>
+                                                                <button type="submit" class="btn btn-primary">Save</button>
+                                                            </div>
+                                                        </form>
+                                                    </div>
+                                                    
+                                                    <form action="/gallery/comment/delete" method="POST" class="delete-comment-form" style="display: none;">
+                                                        <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                                                        <input type="hidden" name="comment_id" value="<?= $comment['id'] ?>">
+                                                        <input type="hidden" name="image_id" value="<?= $singleImage['id'] ?>">
+                                                    </form>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                         </div>
                     </div>

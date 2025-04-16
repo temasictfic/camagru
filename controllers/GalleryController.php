@@ -225,6 +225,9 @@ class GalleryController {
                         $newComment['created_at_iso'] = date('c', $timestamp);
                         $newComment['created_at_formatted'] = formatDate($newComment['created_at']);
                         
+                        // Add current user ID to allow frontend to know if user can edit/delete
+                        $newComment['is_owner'] = ($userId == $newComment['user_id']);
+                        
                         break;
                     }
                 }
@@ -237,6 +240,229 @@ class GalleryController {
             } else {
                 setFlash('success', 'Comment added successfully');
                 redirect('/gallery?image=' . $imageId);
+            }
+        } catch (Exception $e) {
+            if (Security::isAjaxRequest()) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+                exit;
+            } else {
+                setFlash('error', 'An unexpected error occurred');
+                redirect('/gallery');
+            }
+        } finally {
+            // Restore original error reporting
+            error_reporting($originalErrorReporting);
+        }
+    }
+    
+    /**
+     * Update a comment
+     */
+    public function updateComment() {
+        // Turn off error reporting for this method to prevent HTML in JSON
+        $originalErrorReporting = error_reporting();
+        error_reporting(0);
+        
+        try {
+            // Check if the user is logged in
+            if (!isLoggedIn()) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(401);
+                    echo json_encode(['error' => 'You must be logged in to update comments']);
+                    exit;
+                } else {
+                    setFlash('error', 'You must be logged in to update comments');
+                    redirect('/login');
+                }
+            }
+            
+            // Check if the request is POST
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(405);
+                    echo json_encode(['error' => 'Method not allowed']);
+                    exit;
+                } else {
+                    redirect('/gallery');
+                }
+            }
+            
+            // Validate CSRF token
+            if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'Invalid CSRF token']);
+                    exit;
+                } else {
+                    setFlash('error', 'Invalid form submission');
+                    redirect('/gallery');
+                }
+            }
+            
+            // Get comment ID and content
+            $commentId = isset($_POST['comment_id']) && is_numeric($_POST['comment_id']) ? (int)$_POST['comment_id'] : 0;
+            $content = sanitize($_POST['content'] ?? '');
+            
+            if ($commentId <= 0) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Invalid comment ID']);
+                    exit;
+                } else {
+                    setFlash('error', 'Invalid comment ID');
+                    redirect('/gallery');
+                }
+            }
+            
+            if (empty($content)) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Comment cannot be empty']);
+                    exit;
+                } else {
+                    setFlash('error', 'Comment cannot be empty');
+                    redirect('/gallery');
+                }
+            }
+            
+            // Get user ID
+            $userId = getCurrentUserId();
+            
+            // Update comment
+            $success = $this->commentModel->update($commentId, $userId, $content);
+            
+            if (!$success) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'You do not have permission to update this comment']);
+                    exit;
+                } else {
+                    setFlash('error', 'You do not have permission to update this comment');
+                    redirect('/gallery');
+                }
+            }
+            
+            if (Security::isAjaxRequest()) {
+                // Get updated comment
+                $comment = $this->commentModel->findById($commentId);
+                
+                if ($comment) {
+                    // Format date for AJAX response
+                    $timestamp = strtotime($comment['created_at']);
+                    $comment['created_at_iso'] = date('c', $timestamp);
+                    $comment['created_at_formatted'] = formatDate($comment['created_at']);
+                    $comment['is_owner'] = true; // Must be the owner to update
+                }
+                
+                echo json_encode([
+                    'success' => true,
+                    'comment' => $comment
+                ]);
+                exit;
+            } else {
+                setFlash('success', 'Comment updated successfully');
+                redirect('/gallery?image=' . $_POST['image_id'] ?? '');
+            }
+        } catch (Exception $e) {
+            if (Security::isAjaxRequest()) {
+                http_response_code(500);
+                echo json_encode(['error' => 'Server error: ' . $e->getMessage()]);
+                exit;
+            } else {
+                setFlash('error', 'An unexpected error occurred');
+                redirect('/gallery');
+            }
+        } finally {
+            // Restore original error reporting
+            error_reporting($originalErrorReporting);
+        }
+    }
+    
+    /**
+     * Delete a comment
+     */
+    public function deleteComment() {
+        // Turn off error reporting for this method to prevent HTML in JSON
+        $originalErrorReporting = error_reporting();
+        error_reporting(0);
+        
+        try {
+            // Check if the user is logged in
+            if (!isLoggedIn()) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(401);
+                    echo json_encode(['error' => 'You must be logged in to delete comments']);
+                    exit;
+                } else {
+                    setFlash('error', 'You must be logged in to delete comments');
+                    redirect('/login');
+                }
+            }
+            
+            // Check if the request is POST
+            if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(405);
+                    echo json_encode(['error' => 'Method not allowed']);
+                    exit;
+                } else {
+                    redirect('/gallery');
+                }
+            }
+            
+            // Validate CSRF token
+            if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'Invalid CSRF token']);
+                    exit;
+                } else {
+                    setFlash('error', 'Invalid form submission');
+                    redirect('/gallery');
+                }
+            }
+            
+            // Get comment ID
+            $commentId = isset($_POST['comment_id']) && is_numeric($_POST['comment_id']) ? (int)$_POST['comment_id'] : 0;
+            
+            if ($commentId <= 0) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(400);
+                    echo json_encode(['error' => 'Invalid comment ID']);
+                    exit;
+                } else {
+                    setFlash('error', 'Invalid comment ID');
+                    redirect('/gallery');
+                }
+            }
+            
+            // Get user ID
+            $userId = getCurrentUserId();
+            
+            // Delete comment
+            $success = $this->commentModel->delete($commentId, $userId);
+            
+            if (!$success) {
+                if (Security::isAjaxRequest()) {
+                    http_response_code(403);
+                    echo json_encode(['error' => 'You do not have permission to delete this comment']);
+                    exit;
+                } else {
+                    setFlash('error', 'You do not have permission to delete this comment');
+                    redirect('/gallery');
+                }
+            }
+            
+            if (Security::isAjaxRequest()) {
+                echo json_encode([
+                    'success' => true,
+                    'comment_id' => $commentId
+                ]);
+                exit;
+            } else {
+                setFlash('success', 'Comment deleted successfully');
+                redirect('/gallery?image=' . $_POST['image_id'] ?? '');
             }
         } catch (Exception $e) {
             if (Security::isAjaxRequest()) {
