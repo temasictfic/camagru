@@ -174,6 +174,15 @@ class ImageProcessor {
      * Apply overlay to an image with custom positioning and transformations
      */
     private function applyOverlay($image, $overlayName, $overlayData = null) {
+        // Set up error logging
+        $logFile = BASE_PATH . '/overlay_debug.log';
+        
+        // Log the initial data
+        error_log("Processing overlay: $overlayName");
+        if ($overlayData) {
+            error_log("Overlay data received: $overlayData");
+        }
+
         try {
             // Load overlay
             $overlayPath = $this->overlaysDir . $overlayName;
@@ -213,17 +222,21 @@ class ImageProcessor {
             if ($overlayData) {
                 $data = json_decode($overlayData, true);
                 if ($data) {
-                    error_log("Overlay data: " . json_encode($data));
+                    error_log("Parsed overlay data: " . json_encode($data));
                     
                     // Get scale from data
                     $scale = isset($data['scale']) ? (float)$data['scale'] : 0.4;
                     
                     // Get rotation
                     $rotation = isset($data['rotation']) ? (float)$data['rotation'] : 0;
+
+                    error_log("Scale: {$scale}, Rotation: {$rotation}");
                     
                     // Get proportional coordinates
                     $containerWidth = isset($data['containerWidth']) ? (float)$data['containerWidth'] : $imageWidth;
                     $containerHeight = isset($data['containerHeight']) ? (float)$data['containerHeight'] : $imageHeight;
+
+                    error_log("Container dimensions: {$containerWidth}x{$containerHeight}");
                     
                     // Calculate position based on proportions, not absolute pixels
                     // This ensures the relative position in the preview is maintained
@@ -234,10 +247,12 @@ class ImageProcessor {
                         
                         // Apply these percentages to the actual image dimensions
                         // Subtract half the overlay width/height to center it properly
-                        $x = ($xPercent * $imageWidth);
-                        $y = ($yPercent * $imageHeight);
+                        $x = $xPercent * $imageWidth;
+                        $y = $yPercent * $imageHeight;
                         
-                        error_log("Position calculation: X%: {$xPercent}, Y%: {$yPercent}");
+                        error_log("Original position calculation:");
+                        error_log("X: {$data['x']}, Y: {$data['y']}");
+                        error_log("X%: {$xPercent}, Y%: {$yPercent}");
                         error_log("Final position: X: {$x}, Y: {$y}");
                     }
                 }
@@ -247,7 +262,7 @@ class ImageProcessor {
             // Calculate new dimensions after scaling
             // We need to scale based on the image dimensions ratio compared to the preview
             $scaleRatio = min($imageWidth / $overlayWidth, $imageHeight / $overlayHeight);
-            $baseScale = $scaleRatio * 0.5; // Base scale to make overlay reasonable size relative to image
+            $baseScale = $scaleRatio * 0.4; // Base scale to make overlay reasonable size relative to image
             $finalScale = $baseScale * $scale; // Apply user scale factor
             
             $newWidth = $overlayWidth * $finalScale;
