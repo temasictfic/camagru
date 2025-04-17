@@ -60,7 +60,7 @@ networks:
 
 # Volumes
 volumes:
-  uploads_volume:  # Add this new volume
+  uploads_volume:
     driver: local
   mariadb_data:
     driver: local
