@@ -34,6 +34,8 @@ $routes = [
     route('/gallery', 'GalleryController', 'index'),
     route('/gallery/like', 'GalleryController', 'like'),
     route('/gallery/comment', 'GalleryController', 'comment'),
+    route('/gallery/comment/update', 'GalleryController', 'updateComment'),
+    route('/gallery/comment/delete', 'GalleryController', 'deleteComment'),
     
     // Editor routes
     route('/editor', 'ImageController', 'showEditor'),
@@ -78,7 +80,7 @@ $methodName = $matchedRoute['method'];
 
 // For AJAX endpoints, set the proper content type
 if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest') {
-    if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment'])) {
+    if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment', '/gallery/comment/update', '/gallery/comment/delete'])) {
         header('Content-Type: application/json');
     }
 }
@@ -87,7 +89,7 @@ if (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQU
 $controller = new $controllerName();
 
 // For AJAX methods, suppress PHP warnings and notices
-if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment'])) {
+if (in_array($uri, ['/editor/capture', '/editor/upload', '/gallery/like', '/gallery/comment', '/gallery/comment/update', '/gallery/comment/delete'])) {
     // Save current error reporting level
     $originalErrorReporting = error_reporting();
     // Turn off warnings and notices

@@ -75,10 +75,14 @@ function getCurrentUserId() {
 }
 
 /**
- * Format date
+ * Format date in 24-hour format and add UTC data attribute for client-side localization
  */
 function formatDate($date) {
-    return date('F j, Y, g:i a', strtotime($date));
+    $timestamp = strtotime($date);
+    $formatted = date('F j, Y, H:i', $timestamp);
+    // Add ISO format as a data attribute that JavaScript will use for localization
+    $iso = date('c', $timestamp); // ISO 8601 format
+    return '<span class="date-to-localize" data-utc="' . $iso . '">' . $formatted . '</span>';
 }
 
 /**

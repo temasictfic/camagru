@@ -1,6 +1,7 @@
 <?php
 $title = 'Photo Editor | Camagru';
-$extraJs = [];  // Removing external JS to use inline JS only
+$extraCss = ['/css/editor.css']; // Add the editor CSS
+$extraJs = ['/js/editor-gallery.js']; // We'll create a new JS file for handling the editor gallery
 ob_start();
 ?>
 
@@ -12,49 +13,58 @@ ob_start();
             <div class="editor-actions">
                 <button id="startCamera" class="btn btn-primary"><i class="fas fa-camera"></i> Start Camera</button>
                 <button id="switchToUpload" class="btn btn-secondary"><i class="fas fa-upload"></i> Switch to Upload</button>
+                <!-- Moved the capture/create button here -->
+                <button type="submit" id="captureButton" class="btn btn-success">
+                    <i class="fas fa-camera"></i> Capture Photo
+                </button>
             </div>
             
             <div class="camera-container">
-                <video id="camera" autoplay playsinline></video>
-                <canvas id="canvas" style="display: none;"></canvas>
-                <div id="cameraPlaceholder" class="camera-placeholder">
-                    <i class="fas fa-camera"></i>
-                    <p>Camera will appear here</p>
+                <div class="editor-workspace">
+                    <video id="camera" autoplay playsinline></video>
+                    <div id="overlay-container"></div>
+                    <canvas id="canvas" style="display: none;"></canvas>
+                    <div id="cameraPlaceholder" class="camera-placeholder">
+                        <i class="fas fa-camera"></i>
+                        <p>Camera will appear here</p>
+                    </div>
                 </div>
+
             </div>
             
             <div class="upload-container" style="display: none;">
-                <form id="uploadForm" action="/editor/upload" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="overlay" id="uploadOverlayInput" value="">
-                    
-                    <div class="upload-preview" style="margin-bottom: 15px; height: 450px; position: relative; background-color: #000; border-radius: 8px; overflow: hidden;">
-                        <div class="upload-placeholder" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; text-align: center;">
-                            <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem;"></i>
-                            <p>No image selected</p>
-                        </div>
-                        <img id="previewImage" src="" alt="Upload Preview" style="display: none; max-height: 450px; max-width: 100%; margin: 0 auto;">
+                <div class="editor-workspace upload-preview">
+                    <div class="upload-placeholder" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; color: #fff; text-align: center;">
+                        <i class="fas fa-image" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+                        <p>No image selected</p>
                     </div>
-                    
-                    <div class="form-group" style="margin-bottom: 15px;">
-                        <button type="button" id="chooseImageBtn" class="btn btn-primary btn-block" style="display: block; width: 100%;">
-                            <i class="fas fa-upload"></i> Choose Image
-                        </button>
-                        <input type="file" id="fileInput" name="image" accept="image/jpeg, image/png" style="display: none;">
-                    </div>
-                    
-                    <div class="form-group">
-                        <button type="submit" id="createPhotoBtn" class="btn btn-success btn-block" style="display: block; width: 100%;">
-                            <i class="fas fa-plus-circle"></i> Create Photo
-                        </button>
-                    </div>
-                </form>
+                    <img id="previewImage" src="" alt="Upload Preview" style="display: none; max-height: 100%; max-width: 100%; margin: 0 auto;">
+                    <div id="overlay-container-upload"></div>
+                </div>
+            </div>
+
+            <!-- Overlay Controls -->
+            <div class="overlay-controls" id="overlayControls">
+                <div class="control-group">
+                    <label for="scaleSlider">Scale: <span id="scaleValue">100%</span></label>
+                    <input type="range" id="scaleSlider" min="10" max="200" value="100" class="slider">
+                </div>
+                <div class="control-group">
+                    <label for="rotateSlider">Rotate: <span id="rotateValue">0°</span></label>
+                    <input type="range" id="rotateSlider" min="-180" max="180" value="0" class="slider">
+                </div>
+                <div class="control-group">
+                    <button id="moveLeftBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-left"></i></button>
+                    <button id="moveRightBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-right"></i></button>
+                    <button id="moveUpBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-up"></i></button>
+                    <button id="moveDownBtn" class="btn btn-small btn-secondary"><i class="fas fa-arrow-down"></i></button>
+                    <button id="resetOverlayBtn" class="btn btn-small btn-secondary"><i class="fas fa-sync-alt"></i> Reset</button>
+                    <!-- Moved the Clear Overlay button here -->
+                    <button id="clearOverlayBtn" class="btn btn-small btn-secondary"><i class="fas fa-times"></i> Clear</button>
+                </div>
             </div>
             
             <div class="overlays-container">
-                <button id="clearOverlayBtn" class="btn btn-secondary" style="margin-bottom: 10px;">
-                    <i class="fas fa-times"></i> Clear Overlay Selection
-                </button>
                 <h3>Select an Overlay</h3>
                 <div class="overlays-grid">
                     <?php foreach ($overlays as $overlay): ?>
@@ -65,17 +75,14 @@ ob_start();
                 </div>
             </div>
             
-            <div class="capture-action">
-                <form id="captureForm" action="/editor/capture" method="POST">
-                    <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
-                    <input type="hidden" name="image_data" id="imageData">
-                    <input type="hidden" name="overlay" id="overlayInput" value="">
-                    
-                    <button type="submit" id="captureButton" class="btn btn-success btn-block">
-                        <i class="fas fa-camera"></i> Capture Photo
-                    </button>
-                </form>
-            </div>
+            <!-- Hidden form for submitting the image data -->
+            <form id="captureForm" action="/editor/capture" method="POST" style="display: none;">
+                <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                <input type="hidden" name="image_data" id="imageData">
+                <input type="hidden" name="overlay" id="overlayInput" value="">
+                <input type="hidden" name="overlay_data" id="overlayDataInput" value="">
+                <input type="file" id="fileInput" name="image" accept="image/jpeg, image/png" style="display: none;">
+            </form>
         </div>
         
         <div class="editor-sidebar">
@@ -89,11 +96,12 @@ ob_start();
                 <div class="user-images">
                     <?php foreach ($userImages as $image): ?>
                         <div class="user-image">
-                            <img src="/uploads/<?= $image['filename'] ?>" alt="Your photo">
+                            <!-- Changed this to a data-attribute with image ID rather than direct link to gallery -->
+                            <img src="/uploads/<?= $image['filename'] ?>" alt="Your photo" class="view-image" data-image-id="<?= $image['id'] ?>">
                             <div class="user-image-actions">
-                                <a href="/gallery?image=<?= $image['id'] ?>" class="btn btn-small btn-primary">
+                                <button type="button" class="btn btn-small btn-primary view-image-btn" data-image-id="<?= $image['id'] ?>">
                                     <i class="fas fa-eye"></i>
-                                </a>
+                                </button>
                                 <form action="/editor/delete" method="POST" class="delete-form">
                                     <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
                                     <input type="hidden" name="image_id" value="<?= $image['id'] ?>">
@@ -124,12 +132,68 @@ ob_start();
     </div>
 </div>
 
-<!-- Inline JavaScript -->
+<!-- Image modal for viewing photos -->
+<div class="modal" id="imageModal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="close">&times;</span>
+            <h2>Your Photo</h2>
+        </div>
+        <div class="modal-body">
+            <div class="image-details">
+                <img id="modalImage" src="" alt="Your photo">
+                
+                <div class="image-actions">
+                    <?php if (isLoggedIn()): ?>
+                        <form action="/gallery/like" method="POST" class="like-form">
+                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                            <input type="hidden" name="image_id" id="modalImageId" value="">
+                            <button type="submit" class="btn-like" id="likeButton">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </form>
+                    <?php else: ?>
+                        <button class="btn-like disabled">
+                            <i class="fas fa-heart"></i>
+                        </button>
+                    <?php endif; ?>
+                    <span class="likes-count" id="likesCount">0 likes</span>
+                </div>
+                
+                <div class="comments-section">
+                    <h3>Comments</h3>
+                    
+                    <?php if (isLoggedIn()): ?>
+                        <form action="/gallery/comment" method="POST" class="comment-form">
+                            <input type="hidden" name="csrf_token" value="<?= generateCSRFToken() ?>">
+                            <input type="hidden" name="image_id" id="commentImageId" value="">
+                            <div class="form-group">
+                                <textarea name="content" placeholder="Add a comment..." required></textarea>
+                            </div>
+                            <div class="form-group">
+                                <button type="submit" class="btn btn-primary">Post</button>
+                            </div>
+                        </form>
+                    <?php else: ?>
+                        <p><a href="/login">Log in</a> to leave a comment.</p>
+                    <?php endif; ?>
+                    
+                    <div class="comments-list">
+                        <!-- Comments will be loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Include the original editor.js script for editor functionality -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // DOM elements
     const startCameraBtn = document.getElementById('startCamera');
     const switchToUploadBtn = document.getElementById('switchToUpload');
+    const clearOverlayBtn = document.getElementById('clearOverlayBtn');
     const camera = document.getElementById('camera');
     const canvas = document.getElementById('canvas');
     const cameraPlaceholder = document.getElementById('cameraPlaceholder');
@@ -138,23 +202,49 @@ document.addEventListener('DOMContentLoaded', function() {
     const captureButton = document.getElementById('captureButton');
     const overlayItems = document.querySelectorAll('.overlay-item');
     const overlayInput = document.getElementById('overlayInput');
-    const uploadOverlayInput = document.getElementById('uploadOverlayInput');
     const imageData = document.getElementById('imageData');
     const captureForm = document.getElementById('captureForm');
-    const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
-    const chooseImageBtn = document.getElementById('chooseImageBtn');
-    const createPhotoBtn = document.getElementById('createPhotoBtn');
     const previewImage = document.getElementById('previewImage');
     const uploadPlaceholder = document.querySelector('.upload-placeholder');
-    const clearOverlayBtn = document.getElementById('clearOverlayBtn');
     
-    // Debug logging
-    console.log('DOM elements initialized');
+    // Overlay manipulation elements
+    const overlayContainer = document.getElementById('overlay-container');
+    const overlayContainerUpload = document.getElementById('overlay-container-upload');
+    const overlayControls = document.getElementById('overlayControls');
+    
+    // Overlay controls
+    const scaleSlider = document.getElementById('scaleSlider');
+    const rotateSlider = document.getElementById('rotateSlider');
+    const scaleValue = document.getElementById('scaleValue');
+    const rotateValue = document.getElementById('rotateValue');
+    const moveLeftBtn = document.getElementById('moveLeftBtn');
+    const moveRightBtn = document.getElementById('moveRightBtn');
+    const moveUpBtn = document.getElementById('moveUpBtn');
+    const moveDownBtn = document.getElementById('moveDownBtn');
+    const resetOverlayBtn = document.getElementById('resetOverlayBtn');
+    const overlayDataInput = document.getElementById('overlayDataInput');
     
     // Variables
     let stream = null;
     let selectedOverlay = null;
+    let currentOverlayImg = null;
+    let uploadOverlayImg = null;
+    let isUploadMode = false;
+    
+    // Disable the capture button initially
+    if (captureButton) {
+        captureButton.disabled = true;
+        captureButton.classList.add('btn-disabled');
+    }
+    
+    // Overlay position/transformation data
+    let overlayData = {
+        scale: 1,
+        rotation: 0,
+        x: 0,
+        y: 0
+    };
     
     // Event listeners
     if (startCameraBtn) {
@@ -175,17 +265,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
-    if (captureForm) {
-        captureForm.addEventListener('submit', function(e) {
+    if (captureButton) {
+        captureButton.addEventListener('click', function(e) {
             e.preventDefault();
-            captureImage();
-        });
-    }
-    
-    if (chooseImageBtn) {
-        chooseImageBtn.addEventListener('click', function() {
-            if (fileInput) {
-                fileInput.click();
+            if (isUploadMode) {
+                uploadImage();
+            } else {
+                captureImage();
             }
         });
     }
@@ -196,11 +282,133 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            uploadImage();
+    // Overlay control event listeners
+    if (scaleSlider) {
+        scaleSlider.addEventListener('input', function() {
+            const scale = this.value / 100;
+            scaleValue.textContent = this.value + '%';
+            overlayData.scale = scale;
+            updateOverlayTransform();
         });
+    }
+    
+    if (rotateSlider) {
+        rotateSlider.addEventListener('input', function() {
+            const rotation = parseInt(this.value);
+            rotateValue.textContent = rotation + '°';
+            overlayData.rotation = rotation;
+            updateOverlayTransform();
+        });
+    }
+    
+    if (moveLeftBtn) {
+        moveLeftBtn.addEventListener('click', function() {
+            overlayData.x -= 10;
+            updateOverlayTransform();
+        });
+    }
+    
+    if (moveRightBtn) {
+        moveRightBtn.addEventListener('click', function() {
+            overlayData.x += 10;
+            updateOverlayTransform();
+        });
+    }
+    
+    if (moveUpBtn) {
+        moveUpBtn.addEventListener('click', function() {
+            overlayData.y -= 10;
+            updateOverlayTransform();
+        });
+    }
+    
+    if (moveDownBtn) {
+        moveDownBtn.addEventListener('click', function() {
+            overlayData.y += 10;
+            updateOverlayTransform();
+        });
+    }
+    
+    if (resetOverlayBtn) {
+        resetOverlayBtn.addEventListener('click', function() {
+            resetOverlay();
+        });
+    }
+    
+    // Make overlay draggable
+    function makeOverlayDraggable(overlayImg) {
+        let isDragging = false;
+        let startX, startY;
+        let originalX, originalY;
+        
+        overlayImg.addEventListener('mousedown', startDrag);
+        overlayImg.addEventListener('touchstart', startDrag, { passive: false });
+        
+        function startDrag(e) {
+            e.preventDefault();
+            isDragging = true;
+            
+            // Get either touch or mouse position
+            if (e.type === 'touchstart') {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+            } else {
+                startX = e.clientX;
+                startY = e.clientY;
+            }
+            
+            // Store original position
+            originalX = overlayData.x;
+            originalY = overlayData.y;
+            
+            // Add move and end event listeners
+            document.addEventListener('mousemove', dragMove);
+            document.addEventListener('touchmove', dragMove, { passive: false });
+            document.addEventListener('mouseup', dragEnd);
+            document.addEventListener('touchend', dragEnd);
+            
+            // Add dragging class
+            overlayImg.classList.add('dragging');
+        }
+        
+        function dragMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            
+            let clientX, clientY;
+            
+            // Get either touch or mouse position
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
+            }
+            
+            // Calculate the distance moved
+            const deltaX = clientX - startX;
+            const deltaY = clientY - startY;
+            
+            // Update overlay position
+            overlayData.x = originalX + deltaX;
+            overlayData.y = originalY + deltaY;
+            updateOverlayTransform();
+        }
+        
+        function dragEnd() {
+            if (!isDragging) return;
+            isDragging = false;
+            
+            // Remove event listeners
+            document.removeEventListener('mousemove', dragMove);
+            document.removeEventListener('touchmove', dragMove);
+            document.removeEventListener('mouseup', dragEnd);
+            document.removeEventListener('touchend', dragEnd);
+            
+            // Remove dragging class
+            overlayImg.classList.remove('dragging');
+        }
     }
     
     // Functions
@@ -219,17 +427,106 @@ document.addEventListener('DOMContentLoaded', function() {
         // Set selected overlay
         selectedOverlay = item.dataset.overlay;
         
-        // Update hidden inputs
+        // Update hidden input
         overlayInput.value = selectedOverlay;
-        if (uploadOverlayInput) {
-            uploadOverlayInput.value = selectedOverlay;
-            console.log('Upload overlay input set to:', uploadOverlayInput.value);
+        
+        // Enable the capture button now that an overlay is selected
+        if (captureButton) {
+            captureButton.disabled = false;
+            captureButton.classList.remove('btn-disabled');
+        }
+        
+        // Reset overlay transform data
+        resetOverlay();
+        
+        // Determine which container to use
+        const container = isUploadMode ? overlayContainerUpload : overlayContainer;
+        
+        // Clear existing overlay
+        if (container) {
+            container.innerHTML = '';
+        }
+        
+        // Create new overlay image
+        const overlayImg = document.createElement('img');
+        overlayImg.src = '/img/overlays/' + selectedOverlay;
+        overlayImg.className = 'editable-overlay';
+        overlayImg.style.position = 'absolute';
+        overlayImg.style.pointerEvents = 'auto';
+        overlayImg.style.cursor = 'move';
+        
+        // Add the overlay to the container
+        if (container) {
+            container.appendChild(overlayImg);
+            
+            // Track the current overlay image
+            if (isUploadMode) {
+                uploadOverlayImg = overlayImg;
+            } else {
+                currentOverlayImg = overlayImg;
+            }
+            
+            // Make the overlay draggable
+            makeOverlayDraggable(overlayImg);
+            
+            // Show overlay controls
+            if (overlayControls) {
+                overlayControls.style.display = 'block';
+            }
+            
+            // Apply initial transform
+            updateOverlayTransform();
         }
     }
     
-    function clearOverlaySelection() {
-        console.log('Clearing overlay selection');
+    function updateOverlayTransform() {
+        // Determine which overlay image to update
+        const overlayImg = isUploadMode ? uploadOverlayImg : currentOverlayImg;
         
+        if (!overlayImg) return;
+        
+        // Apply transformation 
+        overlayImg.style.transform = `translate(${overlayData.x}px, ${overlayData.y}px) scale(${overlayData.scale}) rotate(${overlayData.rotation}deg)`;
+        
+        // Center the overlay
+        overlayImg.style.transformOrigin = 'center center';
+        
+        // Update the hidden input with overlay data - include viewport dimensions for accurate scaling
+        if (overlayDataInput) {
+            const container = isUploadMode ? 
+                overlayContainerUpload.getBoundingClientRect() : 
+                overlayContainer.getBoundingClientRect();
+                
+            const enhancedData = {
+                ...overlayData,
+                containerWidth: container.width,
+                containerHeight: container.height
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
+        }
+    }
+
+    function resetOverlay() {
+        // Reset transform data
+        overlayData = {
+            scale: 1,
+            rotation: 0,
+            x: 0,
+            y: 0
+        };
+        
+        // Reset controls
+        if (scaleSlider) scaleSlider.value = 100;
+        if (rotateSlider) rotateSlider.value = 0; // Reset to center (0 degrees)
+        if (scaleValue) scaleValue.textContent = '100%';
+        if (rotateValue) rotateValue.textContent = '0°';
+        
+        // Apply reset transform
+        updateOverlayTransform();
+    }
+    
+    function clearOverlaySelection() {
         // Remove selected class from all overlays
         overlayItems.forEach(overlay => {
             overlay.classList.remove('selected');
@@ -237,14 +534,41 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Clear selected overlay
         selectedOverlay = null;
+        
+        // Update hidden input
         overlayInput.value = '';
-        if (uploadOverlayInput) {
-            uploadOverlayInput.value = '';
+        
+        // Disable the capture button since no overlay is selected
+        if (captureButton) {
+            captureButton.disabled = true;
+            captureButton.classList.add('btn-disabled');
+        }
+        
+        // Clear overlays
+        if (overlayContainer) {
+            overlayContainer.innerHTML = '';
+            currentOverlayImg = null;
+        }
+        
+        if (overlayContainerUpload) {
+            overlayContainerUpload.innerHTML = '';
+            uploadOverlayImg = null;
+        }
+        
+        // Hide controls
+        if (overlayControls) {
+            overlayControls.style.display = 'none';
         }
     }
     
     function startCamera() {
         console.log('Starting camera');
+        
+        // Set mode
+        isUploadMode = false;
+        
+        // Update button text
+        captureButton.innerHTML = '<i class="fas fa-camera"></i> Capture Photo';
         
         // Switch UI
         cameraContainer.style.display = 'block';
@@ -266,8 +590,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     camera.style.display = 'block';
                     cameraPlaceholder.style.display = 'none';
                     
-                    // Enable capture button
-                    captureButton.disabled = false;
+                    // If there's a selected overlay, reapply it
+                    if (selectedOverlay) {
+                        // Find the corresponding overlay item
+                        overlayItems.forEach(item => {
+                            if (item.dataset.overlay === selectedOverlay) {
+                                selectOverlay(item);
+                            }
+                        });
+                    } else {
+                        // Make sure capture button is disabled if no overlay is selected
+                        if (captureButton) {
+                            captureButton.disabled = true;
+                            captureButton.classList.add('btn-disabled');
+                        }
+                    }
                 })
                 .catch(function(error) {
                     console.error('Error accessing camera:', error);
@@ -293,13 +630,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function switchToUpload() {
         console.log('Switching to upload mode');
         
+        // Set mode
+        isUploadMode = true;
+        
+        // Update button text
+        captureButton.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
+        
+        // Open file dialog directly
+        fileInput.click();
+        
         // Stop camera if running
         stopCamera();
-        
-        // Reset upload form
-        if (uploadForm) uploadForm.reset();
-        if (previewImage) previewImage.style.display = 'none';
-        if (uploadPlaceholder) uploadPlaceholder.style.display = 'flex';
         
         // Switch UI
         cameraContainer.style.display = 'none';
@@ -308,6 +649,12 @@ document.addEventListener('DOMContentLoaded', function() {
         startCameraBtn.classList.add('btn-secondary');
         switchToUploadBtn.classList.remove('btn-secondary');
         switchToUploadBtn.classList.add('btn-primary');
+        
+        // If no overlay is selected, keep capture button disabled
+        if (!selectedOverlay && captureButton) {
+            captureButton.disabled = true;
+            captureButton.classList.add('btn-disabled');
+        }
     }
     
     function previewSelectedImage(input) {
@@ -327,11 +674,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 previewImage.src = e.target.result;
                 previewImage.style.display = 'block';
                 uploadPlaceholder.style.display = 'none';
+                
+                // If there's a selected overlay, apply it to the upload preview
+                if (selectedOverlay) {
+                    // Find the corresponding overlay item
+                    overlayItems.forEach(item => {
+                        if (item.dataset.overlay === selectedOverlay) {
+                            selectOverlay(item);
+                        }
+                    });
+                } else {
+                    // Make sure capture button is disabled if no overlay is selected
+                    if (captureButton) {
+                        captureButton.disabled = true;
+                        captureButton.classList.add('btn-disabled');
+                    }
+                }
             }
             reader.readAsDataURL(input.files[0]);
         } else {
             previewImage.style.display = 'none';
             uploadPlaceholder.style.display = 'flex';
+            
+            // Clear overlay container
+            if (overlayContainerUpload) {
+                overlayContainerUpload.innerHTML = '';
+                uploadOverlayImg = null;
+            }
+            
+            // Hide controls
+            if (overlayControls) {
+                overlayControls.style.display = 'none';
+            }
         }
     }
     
@@ -355,6 +729,24 @@ document.addEventListener('DOMContentLoaded', function() {
         // Make sure we always have a value for overlay
         if (!overlayInput.value) {
             overlayInput.value = '';
+        }
+        
+        // Add overlay data to form if an overlay is selected
+        if (currentOverlayImg && overlayDataInput) {
+            // Get actual preview and target dimensions
+            const container = overlayContainer.getBoundingClientRect();
+            
+            // Enhance overlay data with preview and target dimensions
+            const enhancedData = {
+                ...overlayData,
+                containerWidth: container.width,
+                containerHeight: container.height
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
+            console.log('Overlay data:', overlayDataInput.value);
+        } else {
+            overlayDataInput.value = '';
         }
         
         console.log('Submitting capture form with overlay:', overlayInput.value);
@@ -405,26 +797,43 @@ document.addEventListener('DOMContentLoaded', function() {
         
         if (!fileInput || !fileInput.files || !fileInput.files.length) {
             alert('Please select an image first.');
+            switchToUpload(); // Open file dialog again
             return;
         }
         
-        // Make sure overlay value is set
-        const currentOverlay = selectedOverlay || '';
-        uploadOverlayInput.value = currentOverlay;
-        
-        console.log('Uploading with overlay:', uploadOverlayInput.value);
-        
-        // Submit form with AJAX
-        const formData = new FormData(uploadForm);
-        
-        // Log form data for debugging
-        for (const pair of formData.entries()) {
-            console.log(pair[0] + ': ' + pair[1]);
+        // Add overlay data to form if an overlay is selected
+        if (uploadOverlayImg && overlayDataInput) {
+            // Get container dimensions
+            const container = overlayContainerUpload.getBoundingClientRect();
+            
+            // Create enhanced data object with all necessary information
+            const enhancedData = {
+                ...overlayData,
+                containerWidth: container.width,
+                containerHeight: container.height
+            };
+            
+            overlayDataInput.value = JSON.stringify(enhancedData);
+            console.log('Upload overlay data:', overlayDataInput.value);
+        } else {
+            overlayDataInput.value = '';
+            console.log('No overlay selected for upload or overlay element not found');
         }
         
         // Show loading state
-        createPhotoBtn.disabled = true;
-        createPhotoBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        captureButton.disabled = true;
+        captureButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        
+        // Create form data for AJAX request
+        const formData = new FormData();
+        formData.append('csrf_token', captureForm.querySelector('[name="csrf_token"]').value);
+        formData.append('overlay', overlayInput.value);
+        formData.append('overlay_data', overlayDataInput.value);
+        formData.append('image', fileInput.files[0]);
+        
+        // Log form data for debugging
+        console.log('Uploading with overlay:', overlayInput.value);
+        console.log('File size:', fileInput.files[0].size);
         
         fetch('/editor/upload', {
             method: 'POST',
@@ -439,6 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     throw new Error('The image is too large.');
                 }
                 return response.text().then(text => {
+                    console.log('Server error response:', text);
                     try {
                         return JSON.parse(text);
                     } catch (e) {
@@ -455,17 +865,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 window.location.reload();
             } else {
                 alert('Error: ' + (data.error || 'Unknown error'));
-                createPhotoBtn.disabled = false;
-                createPhotoBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
+                captureButton.disabled = false;
+                captureButton.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
             }
         })
         .catch(error => {
             console.error('Upload error:', error);
             alert('Error: ' + error.message);
-            createPhotoBtn.disabled = false;
-            createPhotoBtn.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
+            captureButton.disabled = false;
+            captureButton.innerHTML = '<i class="fas fa-plus-circle"></i> Create Photo';
         });
     }
+    
+    // Initialize camera mode by default
+    startCamera();
 });
 </script>
 

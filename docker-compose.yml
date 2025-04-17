@@ -20,22 +20,21 @@ services:
     container_name: camagru_php
     volumes:
       - ./:/var/www/html
-      - vendor_volume:/var/www/html/vendor
     depends_on:
-      - mysql
+      - mariadb
     networks:
       - camagru
     env_file:
       - .env
 
   # MySQL service
-  mysql:
-    image: mysql:8.0
-    container_name: camagru_mysql
+  mariadb:
+    image: yobasystems/alpine-mariadb:11.4.5
+    container_name: camagru_mariadb
     ports:
       - "3306:3306"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
       - ./docker/mysql/init.sql:/docker-entrypoint-initdb.d/init.sql
     env_file:
       - .env
@@ -59,7 +58,5 @@ networks:
 
 # Volumes
 volumes:
-  mysql_data:
-    driver: local
-  vendor_volume:
+  mariadb_data:
     driver: local

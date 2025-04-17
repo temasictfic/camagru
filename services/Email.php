@@ -1,8 +1,7 @@
 <?php
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\SMTP;
-use PHPMailer\PHPMailer\Exception;
+// Include the SMTPClient class
+require_once __DIR__ . '/SMTPClient.php';
 
 class Email {
     private $host;
@@ -22,9 +21,6 @@ class Email {
         $this->from = getenv('MAIL_FROM') ?: 'no-reply@camagru.local';
         $this->fromName = getenv('APP_NAME') ?: 'Camagru';
         $this->debug = getenv('APP_ENV') === 'development';
-        
-        // Ensure PHPMailer autoloader is included
-        require_once BASE_PATH . '/vendor/autoload.php';
     }
 
     /**
@@ -118,7 +114,7 @@ class Email {
     }
 
     /**
-     * Send email using PHPMailer
+     * Send email using custom SMTPClient
      * 
      * @param string $to Recipient email
      * @param string $subject Email subject
@@ -126,55 +122,41 @@ class Email {
      * @return bool Success status
      */
     private function send($to, $subject, $message) {
-        // Create a new PHPMailer instance
-        $mail = new PHPMailer(true);
-        
         try {
-            // Server settings
-            if ($this->debug) {
-                // Set debugging level
-                $mail->SMTPDebug = SMTP::DEBUG_SERVER;
-                // Redirect output to error log
-                $mail->Debugoutput = function($str, $level) {
-                    error_log("PHPMailer Debug: $str");
-                };
+            // Create a new SMTP client
+            $client = new SMTPClient(
+                $this->host,
+                $this->port,
+                $this->username,
+                $this->password,
+                $this->debug
+            );
+            
+            // Connect to the server
+            if (!$client->connect()) {
+                error_log("Failed to connect to SMTP server");
+                return false;
             }
             
-            // Basic SMTP configuration
-            $mail->isSMTP();                   // Send using SMTP
-            $mail->Host = $this->host;         // SMTP server address
-            $mail->Port = $this->port;         // SMTP port
-            
-            // Disable authentication for MailHog
-            $mail->SMTPAuth = false;
-            
-            // Disable encryption for MailHog
-            $mail->SMTPSecure = '';
-            $mail->SMTPAutoTLS = false;
-
-            // Recipients
-            $mail->setFrom($this->from, $this->fromName);
-            $mail->addAddress($to);     
-            $mail->addReplyTo($this->from, $this->fromName);
-
-            // Content
-            $mail->isHTML(true);                                  // Set email format to HTML
-            $mail->Subject = $subject;
-            $mail->Body    = $message;
-            
-            // Plain text alternative for email clients that don't support HTML
-            $mail->AltBody = strip_tags(str_replace('<br>', "\r\n", $message));
-
             // Send the email
-            $mail->send();
+            $result = $client->sendEmail(
+                $this->from,
+                $this->fromName,
+                $to,
+                $subject,
+                $message
+            );
+            
+            // Close the connection
+            $client->close();
             
             if ($this->debug) {
-                error_log("Email sent successfully to $to");
+                error_log("Email " . ($result ? "sent successfully" : "failed to send") . " to $to");
             }
             
-            return true;
+            return $result;
         } catch (Exception $e) {
-            error_log("Email error: " . $mail->ErrorInfo);
+            error_log("Email error: " . $e->getMessage());
             return false;
         }
     }

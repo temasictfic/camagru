@@ -14,6 +14,7 @@ A web application that allows users to create and share photos with applied filt
   - Webcam integration
   - Image upload option
   - Selection of overlay filters
+  - Live preview of edit
   - Server-side image processing
 
 - **Gallery:**
@@ -29,8 +30,8 @@ A web application that allows users to create and share photos with applied filt
 ## Technologies Used
 
 - **Frontend:** HTML5, CSS3, JavaScript (vanilla)
-- **Backend:** PHP 8.2
-- **Database:** MySQL
+- **Backend:** PHP 8.4
+- **Database:** MariaDB
 - **Containerization:** Docker & Docker Compose
 - **Web Server:** Nginx
 
@@ -100,6 +101,7 @@ camagru/
 
 - Password hashing
 - CSRF protection
+- CORS Same Origin
 - XSS prevention
 - Input sanitization
 - Secure session management

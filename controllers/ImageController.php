@@ -102,6 +102,9 @@ class ImageController {
             // Get overlay (may be empty string if no overlay selected)
             $overlayName = isset($_POST['overlay']) ? $_POST['overlay'] : '';
             
+            // Get overlay positioning data (optional)
+            $overlayData = isset($_POST['overlay_data']) ? $_POST['overlay_data'] : null;
+            
             // Clear the output buffer before processing image
             ob_end_clean();
             
@@ -109,13 +112,8 @@ class ImageController {
             $userId = getCurrentUserId();
             $result = null;
             
-            if (!empty($overlayName)) {
-                // Process with overlay
-                $result = $this->imageProcessor->processWebcamImage($imageData, $overlayName);
-            } else {
-                // Process without overlay
-                $result = $this->imageProcessor->processWebcamImageWithoutOverlay($imageData);
-            }
+            // Process with overlay and positioning data
+            $result = $this->imageProcessor->processWebcamImage($imageData, $overlayName, $overlayData);
             
             if (isset($result['error'])) {
                 if (Security::isAjaxRequest()) {
@@ -222,6 +220,10 @@ class ImageController {
             $overlayName = isset($_POST['overlay']) ? $_POST['overlay'] : '';
             error_log("Overlay from POST: " . $overlayName);
             
+            // Get overlay positioning data (optional)
+            $overlayData = isset($_POST['overlay_data']) ? $_POST['overlay_data'] : null;
+            error_log("Overlay data from POST: " . ($overlayData ?? 'none'));
+            
             // Check if file was uploaded
             if (!isset($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
                 $errorMessage = 'No image uploaded';
@@ -254,8 +256,8 @@ class ImageController {
             $userId = getCurrentUserId();
             error_log("Processing image for user ID: " . $userId);
             
-            // Always use processUploadedImage with the overlay
-            $result = $this->imageProcessor->processUploadedImage($_FILES['image'], $overlayName);
+            // Process with overlay and positioning data
+            $result = $this->imageProcessor->processUploadedImage($_FILES['image'], $overlayName, $overlayData);
             error_log("Process result: " . json_encode($result));
             
             if (isset($result['error'])) {

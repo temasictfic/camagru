@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Localize all dates when page loads
+    localizeAllDates();
+    
     // Mobile menu toggle
     const hamburger = document.querySelector('.hamburger');
     const menu = document.querySelector('.menu');
@@ -51,6 +54,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.preventDefault();
                 }
             });
+        });
+    }
+    
+    // Function to format date in local time with 24-hour format
+    function formatDateToLocalTime(dateString) {
+        const date = new Date(dateString);
+        const options = { 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false // Use 24-hour format instead of AM/PM
+        };
+        return date.toLocaleDateString(undefined, options);
+    }
+    
+    // Function to localize all dates on the page
+    function localizeAllDates() {
+        const dateElements = document.querySelectorAll('.date-to-localize');
+        dateElements.forEach(element => {
+            const utcDate = element.getAttribute('data-utc');
+            if (utcDate) {
+                element.textContent = formatDateToLocalTime(utcDate);
+            }
         });
     }
 });
