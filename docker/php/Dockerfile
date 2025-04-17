@@ -28,6 +28,10 @@ COPY . /var/www/html
 RUN chown -R www-data:www-data /var/www/html
 RUN chmod -R 755 /var/www/html/
 
+# Create necessary directories and set permissions
+RUN mkdir -p /var/www/html/public/uploads
+RUN chmod -R 777 /var/www/html/public/uploads
+
 # Expose port 9000 and start php-fpm server
 EXPOSE 9000
 CMD ["php-fpm"]
